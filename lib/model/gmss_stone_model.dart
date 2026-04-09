@@ -109,9 +109,7 @@ class GmssStone {
       culet_size: json['culetSize']?.toString() ?? '',
       length: len,
       ratio: safeDouble(json['ratio']),
-      width: wid > 0
-          ? wid
-          : safeDouble(json['table']), // Fallback to table if width 0
+      width: wid > 0 ? wid : safeDouble(json['table']),
       depth: dep > 0 ? dep : safeDouble(json['depth']),
       table: safeDouble(json['table']),
       total_price: safeDouble(json['totalPrice']),
