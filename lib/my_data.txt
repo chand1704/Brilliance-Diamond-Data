@@ -1,0 +1,3 @@
+https://demo.kodllin.com/stocks
+
+https://dev2.kodllin.com/apis/api/gmss
