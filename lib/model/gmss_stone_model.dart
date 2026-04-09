@@ -80,12 +80,11 @@ class GmssStone {
       wid = safeDouble(json['width']);
       dep = safeDouble(json['depth']);
     }
-    String actualShape =
-        json['shape']?.toString() ?? json['shapeStr']?.toString() ?? 'ROUND';
+    String actualShape = json['shape']?.toString() ?? 'ROUND';
     return GmssStone(
       id: json['id'] ?? json['stockNo']?.hashCode ?? 0,
       stockNo: json['stockNo']?.toString() ?? '',
-      shapeStr: actualShape,
+      shapeStr: actualShape.trim(),
       shapeIcon: '',
       weight: safeDouble(json['weight']),
       colorStr: json['color']?.toString() ?? "",

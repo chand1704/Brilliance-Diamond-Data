@@ -214,18 +214,59 @@ class _GmssScreenState extends State<GmssScreen>
       'icon': '${shapeBaseUrl}50_sf_1737092508.svg',
     },
   ];
+  // Future<List<GmssStone>> _getSmartData() async {
+  //   int shapeId = selectedShapeId;
+  //   String storageKey = (selectedOrigin == 1)
+  //       ? 'cached_lab_data_$shapeId'
+  //       : 'cached_natural_data_$shapeId';
+  //   Map<int, List<GmssStone>> targetCache = (selectedOrigin == 1)
+  //       ? _cachedLabGrownMap
+  //       : _cachedNaturalMap;
+  //   if (targetCache.containsKey(shapeId)) {
+  //     return targetCache[shapeId]!;
+  //   }
+  //
+  //   final String? localData = html.window.localStorage[storageKey];
+  //   if (localData != null && localData.isNotEmpty) {
+  //     try {
+  //       final List<dynamic> decoded = jsonDecode(localData);
+  //       final List<GmssStone> stones = decoded
+  //           .map((e) => GmssStone.fromJson(e, isLab: selectedOrigin == 1))
+  //           .toList();
+  //       targetCache[shapeId] = stones;
+  //       return stones;
+  //     } catch (e) {
+  //       debugPrint("Cache parse error: $e");
+  //     }
+  //   }
+  //   final data = (selectedOrigin == 1)
+  //       ? await GmssApiService.fetchLabGrownData()
+  //       : await GmssApiService.fetchNaturalData();
+  //
+  //   html.window.localStorage[storageKey] = jsonEncode(
+  //     data.map((e) => e.toJson()).toList(),
+  //   );
+  //   targetCache[shapeId] = data;
+  //   return data;
+  // }
   Future<List<GmssStone>> _getSmartData() async {
     int shapeId = selectedShapeId;
+
+    // SOLUTION: Add shapeId to the key so each shape has its own unique cache
     String storageKey = (selectedOrigin == 1)
-        ? 'cached_lab_data'
-        : 'cached_natural_data';
+        ? 'cached_lab_data_$shapeId'
+        : 'cached_natural_data_$shapeId';
+
     Map<int, List<GmssStone>> targetCache = (selectedOrigin == 1)
         ? _cachedLabGrownMap
         : _cachedNaturalMap;
+
+    // 1. Check Memory Cache
     if (targetCache.containsKey(shapeId)) {
       return targetCache[shapeId]!;
     }
 
+    // 2. Check LocalStorage with the shape-specific key
     final String? localData = html.window.localStorage[storageKey];
     if (localData != null && localData.isNotEmpty) {
       try {
@@ -239,14 +280,18 @@ class _GmssScreenState extends State<GmssScreen>
         debugPrint("Cache parse error: $e");
       }
     }
-    final data = (selectedOrigin == 1)
-        ? await GmssApiService.fetchLabGrownData()
-        : await GmssApiService.fetchNaturalData();
 
+    // 3. Fetch from API if no specific cache exists for this shape
+    final data = (selectedOrigin == 1)
+        ? await GmssApiService.fetchLabGrownData(shapeId: shapeId)
+        : await GmssApiService.fetchNaturalData(shapeId: shapeId);
+
+    // Save using the unique shape-based key
     html.window.localStorage[storageKey] = jsonEncode(
       data.map((e) => e.toJson()).toList(),
     );
-    targetCache[shapeId] = data;
+
+    // targetCache[shapeId] = data;
     return data;
   }
 
@@ -474,13 +519,17 @@ class _GmssScreenState extends State<GmssScreen>
           (stoneTable >= _tableRange.start && stoneTable <= _tableRange.end);
       if (stoneTable == 0) matchesTable = true;
 
-      final bool matchesShape =
-          (selectedShapeId == 0 ||
-              selectedShape == "ALL" ||
-              selectedShape == "Other")
+      // final bool matchesShape =
+      //     (selectedShapeId == 0 ||
+      //         selectedShape == "ALL" ||
+      //         selectedShape == "Other")
+      //     ? true
+      //     : stone.shapeStr.trim().toUpperCase() ==
+      //           selectedShape.trim().toUpperCase();
+      final bool matchesShape = (selectedShapeId == 1 || selectedShape == "ALL")
           ? true
-          : (stone.shapeStr).toLowerCase().contains(
-              selectedShape.toLowerCase().trim(),
+          : stone.shapeStr.trim().toUpperCase().contains(
+              selectedShape.trim().toUpperCase(),
             );
       final bool matchesCarat =
           stone.weight >= _caratRange.start && stone.weight <= _caratRange.end;
@@ -488,9 +537,12 @@ class _GmssScreenState extends State<GmssScreen>
           stone.total_price >= _priceRange.start &&
           stone.total_price <= _priceRange.end;
       final String stoneName = (stone.stoneName).toUpperCase();
+      // final bool matchesOrigin = (selectedOrigin == 1)
+      //     ? (stoneName.contains("LAB") || stoneName.contains("LGD"))
+      //     : (stoneName.contains("NATURAL") || stoneName.contains("NAT"));
       final bool matchesOrigin = (selectedOrigin == 1)
-          ? (stoneName.contains("LAB") || stoneName.contains("LGD"))
-          : (stoneName.contains("NATURAL") || stoneName.contains("NAT"));
+          ? stone.isLab
+          : !stone.isLab;
       return matchesShape &&
           matchesCarat &&
           matchesPrice &&
