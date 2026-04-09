@@ -68,42 +68,20 @@ class GmssStone {
 
     String measurements = json['measurements']?.toString() ?? "";
     double len = 0.0;
+    double wid = 0.0;
+    double dep = 0.0;
     if (measurements.contains('*')) {
-      len = safeDouble(measurements.split('*').first);
+      List<String> parts = measurements.split('*');
+      if (parts.length >= 1) len = safeDouble(parts);
+      if (parts.length >= 2) wid = safeDouble(parts[1]);
+      if (parts.length >= 3) dep = safeDouble(parts[2]);
     } else {
       len = safeDouble(json['length']);
+      wid = safeDouble(json['width']);
+      dep = safeDouble(json['depth']);
     }
     String actualShape =
         json['shape']?.toString() ?? json['shapeStr']?.toString() ?? 'ROUND';
-    // return GmssStone(
-    //   id: 0, // New API doesn't seem to have a unique numeric ID, using 0 or use stockNo.hashCode
-    //   stockNo: json['stockNo']?.toString() ?? '',
-    //   shapeStr: json['shape']?.toString() ?? 'ROUND',
-    //   shapeIcon: '', // New API doesn't provide a shape icon URL
-    //   weight: safeDouble(json['weight']),
-    //   colorStr: json['color']?.toString() ?? "",
-    //   fancy_color: json['fancyColor']?.toString() ?? "",
-    //   clarityStr: json['clarity']?.toString() ?? "",
-    //   cut: json['cut']?.toString() ?? '',
-    //   cut_code: json['cut']?.toString() ?? '',
-    //   lab: json['lab']?.toString() ?? '',
-    //   fl_intensity: json['fluorescenceIntensity']?.toString() ?? '',
-    //   polish: json['polish']?.toString() ?? '',
-    //   image_link: json['imageLink']?.toString() ?? "",
-    //   video_link: json['videoLink']?.toString() ?? "",
-    //   stoneName: "LAB GROWN ${json['weight']} CT ${json['shape']}",
-    //   gridle_condition: json['girdleCondition']?.toString() ?? '',
-    //   symmetry: json['symmetry']?.toString() ?? "",
-    //   culet_size: json['culetSize']?.toString() ?? '',
-    //   length: safeDouble(json['measurements']?.toString().split('*').first),
-    //   ratio: safeDouble(json['ratio']),
-    //   depth: safeDouble(json['depth']),
-    //   width: safeDouble(
-    //     json['table'],
-    //   ), // Using table as placeholder if width is missing
-    //   table: safeDouble(json['table']),
-    //   total_price: safeDouble(json['totalPrice']),
-    // );
     return GmssStone(
       id: json['id'] ?? json['stockNo']?.hashCode ?? 0,
       stockNo: json['stockNo']?.toString() ?? '',
@@ -118,17 +96,12 @@ class GmssStone {
       lab: json['lab'] ?? "GIA",
       fl_intensity: json['fluorescenceIntensity']?.toString() ?? '',
       polish: json['polish']?.toString() ?? '',
-      image_link:
-          json['imageLink']?.toString() ?? json['image_link']?.toString() ?? "",
-      video_link:
-          json['videoLink']?.toString() ?? json['video_link']?.toString() ?? "",
-      certi_file:
-          json['certiFile']?.toString() ?? json['certi_file']?.toString() ?? "",
+      image_link: json['imageLink']?.toString() ?? "",
+      video_link: json['videoLink']?.toString() ?? "",
+      certi_file: json['certiFile']?.toString() ?? "",
       stoneName:
           json['stoneName'] ??
-          (isLab
-              ? "${json['weight']} CARAT ${actualShape.toUpperCase()} LAB GROWN"
-              : "${json['weight']} CARAT ${actualShape.toUpperCase()} NATURAL"),
+          "${json['weight']} CARAT ${actualShape.toUpperCase()} ${isLab ? 'LAB GROWN' : 'NATURAL'}",
       gridle_condition:
           json['girdleCondition']?.toString() ??
           json['gridle_condition']?.toString() ??
@@ -137,10 +110,12 @@ class GmssStone {
       culet_size: json['culetSize']?.toString() ?? '',
       length: len,
       ratio: safeDouble(json['ratio']),
-      depth: safeDouble(json['depth']),
-      width: safeDouble(json['width'] ?? json['table']),
+      width: wid > 0
+          ? wid
+          : safeDouble(json['table']), // Fallback to table if width 0
+      depth: dep > 0 ? dep : safeDouble(json['depth']),
       table: safeDouble(json['table']),
-      total_price: safeDouble(json['totalPrice'] ?? json['total_price']),
+      total_price: safeDouble(json['totalPrice']),
       isLab: isLab,
     );
   }
@@ -216,73 +191,4 @@ class GmssStone {
         )
         .toList();
   }
-
-  // factory GmssStone.fromJson(Map<String, dynamic> json) {
-  //   double safeDouble(dynamic v) {
-  //     if (v == null || v.toString() == 'null') return 0.0;
-  //     if (v is num) return v.toDouble();
-  //     return double.tryParse(v.toString()) ?? 0.0;
-  //   }
-  //
-  //   String rawImage = json['image_link']?.toString() ?? "";
-  //   String fullImage = rawImage;
-  //
-  //   if (rawImage.isNotEmpty && !rawImage.startsWith('http')) {
-  //     fullImage = "https://dev2.kodllin.com/$rawImage";
-  //   }
-  //
-  //   String rawShape = json['shape_str']?.toString() ?? 'ROUND';
-  //   String cleanShape = rawShape.split(' ')[0];
-  //
-  //   String rawVideo = json['video_link']?.toString() ?? "";
-  //   String fullVideo = rawVideo.isEmpty
-  //       ? ""
-  //       : (rawVideo.startsWith('http')
-  //             ? rawVideo
-  //             : "https://dev2.kodllin.com/$rawVideo");
-  //
-  //   String? rawCert = json['certi_file']?.toString();
-  //   String? fullCert;
-  //   if (rawCert != null && rawCert.isNotEmpty && rawCert != "null") {
-  //     fullCert = rawCert.startsWith('http')
-  //         ? rawCert
-  //         : "https://dev2.kodllin.com/$rawCert";
-  //   }
-  //
-  //   final shapeItem = json['shape_item'] as Map<String, dynamic>?;
-  //
-  //   final cutItem = json['cut_item'] as Map<String, dynamic>?;
-  //
-  //   return GmssStone(
-  //     id: json['id'] is int ? json['id'] : 0,
-  //     stockNo: json['stock_no']?.toString() ?? '',
-  //     shapeStr: cleanShape,
-  //     shapeIcon: shapeItem?['image_link']?.toString() ?? '',
-  //     weight: safeDouble(json['weight']),
-  //     // colorStr: json['color_str_2']?.toString() ?? "",
-  //     colorStr: (json['color_str_2']?.toString() ?? "").isEmpty
-  //         ? (json['fancy_color']?.toString() ?? "")
-  //         : json['color_str_2'].toString(),
-  //     fancy_color: json['fancy_color']?.toString() ?? "",
-  //     clarityStr: json['clarity_str']?.toString() ?? "",
-  //     cut: json['cut']?.toString() ?? '',
-  //     cut_code: cutItem?['cut_code']?.toString() ?? '',
-  //     lab: json['lab_name']?.toString() ?? '',
-  //     fl_intensity: json['fl_intensity']?.toString() ?? '',
-  //     polish: json['polish']?.toString() ?? '',
-  //     image_link: fullImage,
-  //     video_link: fullVideo,
-  //     stoneName: json['stone_name']?.toString() ?? '',
-  //     gridle_condition: json['gridle_condition']?.toString() ?? '',
-  //     symmetry: json['symmetry_item']?['symmetry_code']?.toString() ?? "",
-  //     culet_size: json['culet_size']?.toString() ?? '',
-  //     certi_file: fullCert,
-  //     length: safeDouble(json['length']),
-  //     ratio: safeDouble(json['ratio']),
-  //     depth: safeDouble(json['depth']),
-  //     width: safeDouble(json['width']),
-  //     table: safeDouble(json['table']),
-  //     total_price: safeDouble(json['total_price']),
-  //   );
-  // }
 }
