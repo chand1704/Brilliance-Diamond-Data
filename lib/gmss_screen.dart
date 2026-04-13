@@ -250,7 +250,7 @@ class _GmssScreenState extends State<GmssScreen>
   // }
   Future<List<GmssStone>> _getSmartData() async {
     int shapeId = selectedShapeId;
-
+    String shapeName = selectedShape; // Use the name string for the API
     // SOLUTION: Add shapeId to the key so each shape has its own unique cache
     String storageKey = (selectedOrigin == 1)
         ? 'cached_lab_data_$shapeId'
@@ -282,8 +282,8 @@ class _GmssScreenState extends State<GmssScreen>
 
     // 3. Fetch from API if no specific cache exists for this shape
     final data = (selectedOrigin == 1)
-        ? await GmssApiService.fetchLabGrownData(shapeId: shapeId)
-        : await GmssApiService.fetchNaturalData(shapeId: shapeId);
+        ? await GmssApiService.fetchLabGrownData(shapeName: shapeName)
+        : await GmssApiService.fetchNaturalData(shapeName: shapeName);
 
     // Save using the unique shape-based key
     html.window.localStorage[storageKey] = jsonEncode(

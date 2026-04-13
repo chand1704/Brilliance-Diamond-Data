@@ -7,10 +7,10 @@ import '../model/gmss_stone_model.dart';
 class GmssApiService {
   static const String baseUrl = 'https://dev2.kodllin.com/apis/api/getStockN';
   static const String currentAuthKey = 'jrn2m0veeul6';
-  static Future<List<GmssStone>> fetchLabGrownData({int? shapeId}) async {
-    print("API REQUEST FOR SHAPE ID: $shapeId");
-    String shapeParam = (shapeId != null && shapeId > 0)
-        ? "&shape=$shapeId"
+  static Future<List<GmssStone>> fetchLabGrownData({String? shapeName}) async {
+    print("API REQUEST FOR SHAPE ID: $shapeName");
+    String shapeParam = (shapeName != null && shapeName != "Round")
+        ? "&shape=$shapeName"
         : "";
     final uri = Uri.parse(
       '$baseUrl?auth_key=$currentAuthKey&per_page=100000&page=1$shapeParam',
@@ -26,9 +26,9 @@ class GmssApiService {
     return [];
   }
 
-  static Future<List<GmssStone>> fetchNaturalData({int? shapeId}) async {
-    String shapeParam = (shapeId != null && shapeId > 0)
-        ? "&shape=$shapeId"
+  static Future<List<GmssStone>> fetchNaturalData({String? shapeName}) async {
+    String shapeParam = (shapeName != null && shapeName != "Round")
+        ? "&shape=$shapeName"
         : "";
     final uri = Uri.parse(
       '$baseUrl?auth_key=$currentAuthKey&per_page=1000&page=1$shapeParam',

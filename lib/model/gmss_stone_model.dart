@@ -80,7 +80,11 @@ class GmssStone {
       wid = safeDouble(json['width']);
       dep = safeDouble(json['depth']);
     }
+    // Use 'Diamond_Type' from your API if available
+    String apiLabInfo =
+        json['Diamond_Type']?.toString() ?? (isLab ? 'LAB GROWN' : 'NATURAL');
     String actualShape = json['shape']?.toString() ?? 'ROUND';
+    if (actualShape.toUpperCase().contains("ROUND")) actualShape = "ROUND";
     return GmssStone(
       id: json['id'] ?? json['stockNo']?.hashCode ?? 0,
       stockNo: json['stockNo']?.toString() ?? '',
@@ -92,7 +96,10 @@ class GmssStone {
       clarityStr: json['clarity']?.toString() ?? "",
       cut: json['cut']?.toString() ?? '',
       cut_code: json['cut']?.toString() ?? '',
-      lab: json['lab'] ?? "GIA",
+      // lab: json['lab'] ?? "GIA",
+      lab: apiLabInfo, // This now uses "Diamond_Type"
+      isLab: apiLabInfo.toUpperCase().contains("LAB"),
+      // isLab: isLab,
       fl_intensity: json['fluorescenceIntensity']?.toString() ?? '',
       polish: json['polish']?.toString() ?? '',
       image_link: json['imageLink']?.toString() ?? "",
@@ -113,7 +120,6 @@ class GmssStone {
       depth: dep > 0 ? dep : safeDouble(json['depth']),
       table: safeDouble(json['table']),
       total_price: safeDouble(json['totalPrice']),
-      isLab: isLab,
     );
   }
   Map<String, dynamic> toJson() {
