@@ -2,14 +2,14 @@ import 'dart:convert';
 import 'dart:html' as html;
 import 'dart:ui_web' as ui;
 
-import 'package:brilliance_diamond/service/gmss_api_service.dart';
-import 'package:brilliance_diamond/widgets/main_header.dart';
-import 'package:brilliance_diamond/widgets/safe_image.dart';
+import 'package:brilliance_diamond_data/model/gmss_stone_model.dart';
+import 'package:brilliance_diamond_data/service/gmss_api_service.dart';
+import 'package:brilliance_diamond_data/widgets/main_header.dart';
+import 'package:brilliance_diamond_data/widgets/safe_image.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'DiamondDesign.dart';
-import 'model/gmss_stone_model.dart';
 
 class DiamondDetailScreen extends StatefulWidget {
   final GmssStone? stone;

@@ -1,6 +1,6 @@
 {
-    "name": "brilliance_diamond",
-    "short_name": "brilliance_diamond",
+    "name": "brilliance_diamond_data",
+    "short_name": "brilliance_diamond_data",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

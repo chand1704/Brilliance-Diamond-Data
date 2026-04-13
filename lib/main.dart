@@ -1,4 +1,4 @@
-import 'package:brilliance_diamond/diamonds_details_pages.dart';
+import 'package:brilliance_diamond_data/diamonds_details_pages.dart';
 import 'package:flutter/material.dart';
 
 import 'gmss_screen.dart';

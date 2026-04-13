@@ -1,4 +1,4 @@
-import 'package:brilliance_diamond/utils/diamond_painter_utils.dart';
+import 'package:brilliance_diamond_data/utils/diamond_painter_utils.dart';
 import 'package:flutter/material.dart';
 
 class MainHeader extends StatefulWidget {

@@ -1,14 +1,13 @@
 import 'dart:convert';
 import 'dart:html' as html;
 
-import 'package:brilliance_diamond/utils/diamond_painter_utils.dart';
-import 'package:brilliance_diamond/widgets/diamond_card.dart';
-import 'package:brilliance_diamond/widgets/main_header.dart';
-import 'package:brilliance_diamond/widgets/sidebar_filters.dart';
+import 'package:brilliance_diamond_data/model/gmss_stone_model.dart';
+import 'package:brilliance_diamond_data/service/gmss_api_service.dart';
+import 'package:brilliance_diamond_data/utils/diamond_painter_utils.dart';
+import 'package:brilliance_diamond_data/widgets/diamond_card.dart';
+import 'package:brilliance_diamond_data/widgets/main_header.dart';
+import 'package:brilliance_diamond_data/widgets/sidebar_filters.dart';
 import 'package:flutter/material.dart';
-
-import 'model/gmss_stone_model.dart';
-import 'service/gmss_api_service.dart';
 
 class GmssScreen extends StatefulWidget {
   const GmssScreen({super.key});
@@ -291,7 +290,7 @@ class _GmssScreenState extends State<GmssScreen>
       data.map((e) => e.toJson()).toList(),
     );
 
-    // targetCache[shapeId] = data;
+    targetCache[shapeId] = data;
     return data;
   }
 
@@ -526,11 +525,19 @@ class _GmssScreenState extends State<GmssScreen>
       //     ? true
       //     : stone.shapeStr.trim().toUpperCase() ==
       //           selectedShape.trim().toUpperCase();
-      final bool matchesShape = (selectedShapeId == 1 || selectedShape == "ALL")
+      final bool matchesShape =
+          (selectedShapeId == 0 ||
+              selectedShape == "ALL" ||
+              selectedShape == "Other")
           ? true
           : stone.shapeStr.trim().toUpperCase().contains(
               selectedShape.trim().toUpperCase(),
             );
+      // final bool matchesShape = (selectedShapeId == 1 || selectedShape == "ALL")
+      //     ? true
+      //     : stone.shapeStr.trim().toUpperCase().contains(
+      //         selectedShape.trim().toUpperCase(),
+      //       );
       final bool matchesCarat =
           stone.weight >= _caratRange.start && stone.weight <= _caratRange.end;
       final bool matchesPrice =
@@ -769,9 +776,8 @@ class _GmssScreenState extends State<GmssScreen>
                     }
                     final List<GmssStone> sourceData =
                         snapshot.data ?? _lastRetrievedData ?? [];
-                    final List<GmssStone> searchResults = _applyFiltering(
-                      sourceData,
-                    );
+                    final List<GmssStone> searchResults = sourceData;
+
                     List<GmssStone> displayStones;
                     if (_currentTab == 1) {
                       displayStones = _recentlyViewed;
