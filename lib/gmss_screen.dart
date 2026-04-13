@@ -518,21 +518,13 @@ class _GmssScreenState extends State<GmssScreen>
           (stoneTable >= _tableRange.start && stoneTable <= _tableRange.end);
       if (stoneTable == 0) matchesTable = true;
 
-      // final bool matchesShape =
-      //     (selectedShapeId == 0 ||
-      //         selectedShape == "ALL" ||
-      //         selectedShape == "Other")
-      //     ? true
-      //     : stone.shapeStr.trim().toUpperCase() ==
-      //           selectedShape.trim().toUpperCase();
       final bool matchesShape =
-          (selectedShapeId == 0 ||
+          (selectedShapeId == 1 ||
               selectedShape == "ALL" ||
               selectedShape == "Other")
           ? true
-          : stone.shapeStr.trim().toUpperCase().contains(
-              selectedShape.trim().toUpperCase(),
-            );
+          : stone.shapeStr.toLowerCase().trim() ==
+                selectedShape.toLowerCase().trim();
       // final bool matchesShape = (selectedShapeId == 1 || selectedShape == "ALL")
       //     ? true
       //     : stone.shapeStr.trim().toUpperCase().contains(
@@ -776,7 +768,9 @@ class _GmssScreenState extends State<GmssScreen>
                     }
                     final List<GmssStone> sourceData =
                         snapshot.data ?? _lastRetrievedData ?? [];
-                    final List<GmssStone> searchResults = sourceData;
+                    final List<GmssStone> searchResults = _applyFiltering(
+                      sourceData,
+                    );
 
                     List<GmssStone> displayStones;
                     if (_currentTab == 1) {
