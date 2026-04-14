@@ -277,21 +277,21 @@ class GmssStone {
       return double.tryParse(v.toString()) ?? 0.0;
     }
 
+    // 1. Correct the Shape Normalization
     String rawShape = json['shape']?.toString() ?? 'ROUND';
-    String normalizedShape = rawShape.trim().toUpperCase();
+    String normalizedShape = rawShape.toUpperCase();
 
-    if (normalizedShape.contains("ROUND")) {
+    if (normalizedShape.contains("ROUND"))
       normalizedShape = "ROUND";
-    } else if (normalizedShape.contains("PRINCESS")) {
+    else if (normalizedShape.contains("PRINCESS"))
       normalizedShape = "PRINCESS";
-    } else if (normalizedShape.contains("EMERALD")) {
+    else if (normalizedShape.contains("EMERALD"))
       normalizedShape = "EMERALD";
-    }
+    else if (normalizedShape.contains("CUSHION"))
+      normalizedShape = "CUSHION";
 
     String measurements = json['measurements']?.toString() ?? "";
-    double len = 0.0;
-    double wid = 0.0;
-    double dep = 0.0;
+    double len = 0.0, wid = 0.0, dep = 0.0;
     if (measurements.contains('*')) {
       List<String> parts = measurements.split('*');
       if (parts.length >= 1) len = safeDouble(parts);
@@ -305,9 +305,11 @@ class GmssStone {
     // Use 'Diamond_Type' from your API if available
     String apiLabInfo =
         json['Diamond_Type']?.toString() ?? (isLab ? 'LAB GROWN' : 'NATURAL');
+
     bool stoneIsLab = apiLabInfo.toUpperCase().contains("LAB") || isLab;
-    String actualShape = json['shape']?.toString() ?? 'ROUND';
-    if (actualShape.toUpperCase().contains("ROUND")) actualShape = "ROUND";
+
+    // String actualShape = json['shape']?.toString() ?? 'ROUND';
+    // if (actualShape.toUpperCase().contains("ROUND")) actualShape = "ROUND";
     return GmssStone(
       id: json['id'] ?? json['stockNo']?.hashCode ?? 0,
       stockNo: json['stockNo']?.toString() ?? '',
@@ -332,7 +334,7 @@ class GmssStone {
       certi_file: json['certiFile']?.toString() ?? "",
       stoneName:
           json['stoneName'] ??
-          "${json['weight']} CARAT ${actualShape.toUpperCase()} ${isLab ? 'LAB GROWN' : 'NATURAL'}",
+          "${json['weight']} CARAT $normalizedShape ${stoneIsLab ? 'LAB GROWN' : 'NATURAL'}",
       gridle_condition:
           json['girdleCondition']?.toString() ??
           json['gridle_condition']?.toString() ??
@@ -344,7 +346,7 @@ class GmssStone {
       width: wid > 0 ? wid : safeDouble(json['table']),
       depth: dep > 0 ? dep : safeDouble(json['depth']),
       table: safeDouble(json['table']),
-      total_price: safeDouble(json['totalPrice']),
+      total_price: safeDouble(json['totalPrice'] ?? json['total_price'] ?? 0.0),
     );
   }
   Map<String, dynamic> toJson() {

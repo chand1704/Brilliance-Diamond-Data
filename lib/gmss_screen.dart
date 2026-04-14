@@ -250,7 +250,9 @@ class _GmssScreenState extends State<GmssScreen>
   // }
   Future<List<GmssStone>> _getSmartData() async {
     int shapeId = selectedShapeId;
-    String shapeName = selectedShape; // Use the name string for the API
+    String? apiShapeName = (selectedShape == "Other")
+        ? null
+        : selectedShape; // Use the name string for the API
     // SOLUTION: Add shapeId to the key so each shape has its own unique cache
     String storageKey = (selectedOrigin == 1)
         ? 'cached_lab_data_$shapeId'
@@ -282,8 +284,8 @@ class _GmssScreenState extends State<GmssScreen>
 
     // 3. Fetch from API if no specific cache exists for this shape
     final data = (selectedOrigin == 1)
-        ? await GmssApiService.fetchLabGrownData(shapeName: shapeName)
-        : await GmssApiService.fetchNaturalData(shapeName: shapeName);
+        ? await GmssApiService.fetchLabGrownData(shapeName: apiShapeName)
+        : await GmssApiService.fetchNaturalData(shapeName: apiShapeName);
 
     // Save using the unique shape-based key
     html.window.localStorage[storageKey] = jsonEncode(
@@ -518,21 +520,21 @@ class _GmssScreenState extends State<GmssScreen>
           (stoneTable >= _tableRange.start && stoneTable <= _tableRange.end);
       if (stoneTable == 0) matchesTable = true;
 
-      // final bool matchesShape =
-      //     (selectedShapeId == 1 ||
-      //         selectedShape == "ALL" ||
-      //         selectedShape == "Other")
-      //     ? true
-      //     : stone.shapeStr.toLowerCase().trim() ==
-      //           selectedShape.toLowerCase().trim();
-      final bool matchesShape =
-          (selectedShapeId <= 0 ||
-              selectedShape == "ALL" ||
-              selectedShape == "Other")
+      final bool matchesShape = (selectedShape == "Other")
+          ? stone.shapeStr.toUpperCase() != "ROUND"
+          : (selectedShapeId <= 0 || selectedShape == "ALL")
           ? true
           : stone.shapeStr.toUpperCase().contains(
               selectedShape.toUpperCase().trim(),
             );
+      // final bool matchesShape =
+      //     (selectedShapeId <= 0 ||
+      //         selectedShape == "ALL" ||
+      //         selectedShape == "Other")
+      //     ? true
+      //     : stone.shapeStr.toUpperCase().contains(
+      //         selectedShape.toUpperCase().trim(),
+      //       );
       final bool matchesCarat =
           stone.weight >= _caratRange.start && stone.weight <= _caratRange.end;
       final bool matchesPrice =
@@ -699,11 +701,12 @@ class _GmssScreenState extends State<GmssScreen>
                       });
                     },
                     onShapeTap: (shapeName, shapeId) {
+                      if (selectedShapeId == shapeId) return;
                       setState(() {
                         selectedShape = shapeName;
                         selectedShapeId = shapeId;
-                        _cachedLabGrownMap.clear();
-                        _cachedNaturalMap.clear();
+                        // _cachedLabGrownMap.clear();
+                        // _cachedNaturalMap.clear();
                         _future = _getSmartData();
                       });
                     },
