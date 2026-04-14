@@ -66,6 +66,17 @@ class GmssStone {
       return double.tryParse(v.toString()) ?? 0.0;
     }
 
+    String rawShape = json['shape']?.toString() ?? 'ROUND';
+    String normalizedShape = rawShape.trim().toUpperCase();
+
+    if (normalizedShape.contains("ROUND")) {
+      normalizedShape = "ROUND";
+    } else if (normalizedShape.contains("PRINCESS")) {
+      normalizedShape = "PRINCESS";
+    } else if (normalizedShape.contains("EMERALD")) {
+      normalizedShape = "EMERALD";
+    }
+
     String measurements = json['measurements']?.toString() ?? "";
     double len = 0.0;
     double wid = 0.0;
@@ -73,8 +84,8 @@ class GmssStone {
     if (measurements.contains('*')) {
       List<String> parts = measurements.split('*');
       if (parts.length >= 1) len = safeDouble(parts);
-      if (parts.length >= 2) wid = safeDouble(parts[1]);
-      if (parts.length >= 3) dep = safeDouble(parts[2]);
+      if (parts.length >= 2) wid = safeDouble(parts);
+      if (parts.length >= 3) dep = safeDouble(parts);
     } else {
       len = safeDouble(json['length']);
       wid = safeDouble(json['width']);
@@ -83,12 +94,14 @@ class GmssStone {
     // Use 'Diamond_Type' from your API if available
     String apiLabInfo =
         json['Diamond_Type']?.toString() ?? (isLab ? 'LAB GROWN' : 'NATURAL');
+    bool stoneIsLab = apiLabInfo.toUpperCase().contains("LAB") || isLab;
     String actualShape = json['shape']?.toString() ?? 'ROUND';
     if (actualShape.toUpperCase().contains("ROUND")) actualShape = "ROUND";
     return GmssStone(
       id: json['id'] ?? json['stockNo']?.hashCode ?? 0,
       stockNo: json['stockNo']?.toString() ?? '',
-      shapeStr: actualShape.trim(),
+      // shapeStr: actualShape.trim(),
+      shapeStr: normalizedShape,
       shapeIcon: '',
       weight: safeDouble(json['weight']),
       colorStr: json['color']?.toString() ?? "",
@@ -97,8 +110,9 @@ class GmssStone {
       cut: json['cut']?.toString() ?? '',
       cut_code: json['cut']?.toString() ?? '',
       // lab: json['lab'] ?? "GIA",
-      lab: apiLabInfo, // This now uses "Diamond_Type"
-      isLab: apiLabInfo.toUpperCase().contains("LAB"),
+      lab: apiLabInfo,
+      isLab: stoneIsLab,
+      // isLab: apiLabInfo.toUpperCase().contains("LAB"),
       // isLab: isLab,
       fl_intensity: json['fluorescenceIntensity']?.toString() ?? '',
       polish: json['polish']?.toString() ?? '',

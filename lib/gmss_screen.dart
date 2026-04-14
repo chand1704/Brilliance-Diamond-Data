@@ -518,18 +518,21 @@ class _GmssScreenState extends State<GmssScreen>
           (stoneTable >= _tableRange.start && stoneTable <= _tableRange.end);
       if (stoneTable == 0) matchesTable = true;
 
+      // final bool matchesShape =
+      //     (selectedShapeId == 1 ||
+      //         selectedShape == "ALL" ||
+      //         selectedShape == "Other")
+      //     ? true
+      //     : stone.shapeStr.toLowerCase().trim() ==
+      //           selectedShape.toLowerCase().trim();
       final bool matchesShape =
-          (selectedShapeId == 1 ||
+          (selectedShapeId <= 0 ||
               selectedShape == "ALL" ||
               selectedShape == "Other")
           ? true
-          : stone.shapeStr.toLowerCase().trim() ==
-                selectedShape.toLowerCase().trim();
-      // final bool matchesShape = (selectedShapeId == 1 || selectedShape == "ALL")
-      //     ? true
-      //     : stone.shapeStr.trim().toUpperCase().contains(
-      //         selectedShape.trim().toUpperCase(),
-      //       );
+          : stone.shapeStr.toUpperCase().contains(
+              selectedShape.toUpperCase().trim(),
+            );
       final bool matchesCarat =
           stone.weight >= _caratRange.start && stone.weight <= _caratRange.end;
       final bool matchesPrice =
@@ -699,6 +702,8 @@ class _GmssScreenState extends State<GmssScreen>
                       setState(() {
                         selectedShape = shapeName;
                         selectedShapeId = shapeId;
+                        _cachedLabGrownMap.clear();
+                        _cachedNaturalMap.clear();
                         _future = _getSmartData();
                       });
                     },
