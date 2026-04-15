@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/cupertino.dart';
 import 'package:http/http.dart' as http;
 
 import '../model/gmss_stone_model.dart';
@@ -16,42 +17,26 @@ class GmssApiService {
     return _fetchDiamondData(shapeName: shapeName, isLab: false);
   }
 
-  /// Private helper to avoid code duplication and handle logic in one place
   static Future<List<GmssStone>> _fetchDiamondData({
     String? shapeName,
     required bool isLab,
   }) async {
     try {
-      // 2. Build URI cleanly
-      final queryParams = {
+      final Map<String, String> queryParams = {
         'auth_key': currentAuthKey,
         'per_page': '1000',
         'page': '1',
       };
-      // 1. Handle "Other" or "All" logic
-      // If shape is 'Other' or null, we don't send the shape param to get all available stock
-      String? apiShape;
-      if (shapeName != null && shapeName.toLowerCase() != "other") {
+
+      if (shapeName != null &&
+          shapeName.toLowerCase() != "other" &&
+          shapeName.toLowerCase() != "all") {
         queryParams['shape'] = shapeName.toUpperCase();
       }
-
-      // 2. Build URI cleanly
-      // final queryParams = {
-      //   'auth_key': currentAuthKey,
-      //   'per_page': '1000',
-      //   'page': '1',
-      // };
-
-      // Only add shape if it's a specific valid shape
-      if (apiShape != null) {
-        queryParams['shape'] = apiShape;
-      }
-
       final uri = Uri.parse(baseUrl).replace(queryParameters: queryParams);
+      print("Api REQUEST(${isLab ? 'LAB' : 'NATURAL'}):$uri");
 
-      print("API REQUEST (${isLab ? 'LAB' : 'NATURAL'}): $uri");
-
-      final response = await http.post(uri);
+      final response = await http.post(uri).timeout(const Duration(seconds: 2));
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> body = jsonDecode(response.body);
@@ -62,10 +47,10 @@ class GmssApiService {
               .toList();
         }
       } else {
-        print("API Error: ${response.statusCode} - ${response.body}");
+        debugPrint("API Error: ${response.statusCode} - ${response.body}");
       }
     } catch (e) {
-      print("GmssApiService Exception: $e");
+      debugPrint("GmssApiService Exception: $e");
     }
     return [];
   }

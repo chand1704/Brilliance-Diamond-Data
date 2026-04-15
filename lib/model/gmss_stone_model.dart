@@ -294,9 +294,9 @@ class GmssStone {
     double len = 0.0, wid = 0.0, dep = 0.0;
     if (measurements.contains('*')) {
       List<String> parts = measurements.split('*');
-      if (parts.length >= 1) len = safeDouble(parts);
-      if (parts.length >= 2) wid = safeDouble(parts);
-      if (parts.length >= 3) dep = safeDouble(parts);
+      if (parts.length >= 1) len = safeDouble(parts); // ADD HERE
+      if (parts.length >= 2) wid = safeDouble(parts); // ADD HERE
+      if (parts.length >= 3) dep = safeDouble(parts); // ADD HERE
     } else {
       len = safeDouble(json['length']);
       wid = safeDouble(json['width']);
