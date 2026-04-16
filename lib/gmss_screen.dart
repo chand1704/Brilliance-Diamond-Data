@@ -407,194 +407,310 @@ class _GmssScreenState extends State<GmssScreen>
   }
 
   List<GmssStone> _applyFiltering(List<GmssStone> allStones) {
-    final List<GmssStone> filtered = allStones.where((stone) {
-      bool matchesColor = false;
+    final String searchShapeUpper = selectedShape.toUpperCase().trim();
+    final String searchFancyUpper = selectedFancyColor?.toUpperCase() ?? "";
+    const cutMapping = {
+      'ID': 0, // IDEAL
+      'EX': 1, // EXCELLENT
+      'VG': 2, // VERY GOOD
+      'GD': 3, // GOOD
+      'FR': 4, // FAIR
+    };
+    const polishMapping = {
+      'EX': 0, // EXCELLENT (Matches your first label)
+      'VG': 1, // VERY GOOD
+      'GD': 2, // GOOD
+      'FR': 3, // FAIR
+    };
+    const symMapping = {
+      'EX': 3, // EXCELLENT
+      'VG': 2, // VERY GOOD
+      'GD': 1, // GOOD
+      'FAIR': 0, // FAIR
+      'PR': 0, // POOR (Mapping Poor to the start of the slider)
+      'POOR': 0,
+    };
+    const flMapping = {
+      'NONE': 0,
+      'NON': 0,
+      'VERY SLIGHT': 0,
+      'SLIGHT': 1,
+      'FAINT': 1,
+      'FNT': 1,
+      'MEDIUM': 2,
+      'MED': 2,
+      'STRONG': 3,
+      'STG': 3,
+      'VERY STRONG': 3,
+      'VST': 3,
+    };
+    return allStones.where((stone) {
+      // --- 2. ORIGIN CHECK (Fastest) ---
+      final bool matchesOrigin = (selectedOrigin == 1)
+          ? stone.isLab
+          : !stone.isLab;
+      if (!matchesOrigin) return false;
+
+      // --- 3. SHAPE CHECK ---
+      bool matchesShape = (searchShapeUpper == "OTHER")
+          ? stone.shapeStr.toUpperCase() != "ROUND"
+          : (selectedShapeId <= 0 || searchShapeUpper == "ALL")
+          ? true
+          : stone.shapeStr.toUpperCase().contains(searchShapeUpper);
+      if (!matchesShape) return false;
+
+      // --- 4. CARAT & PRICE RANGE ---
+      if (stone.weight < _caratRange.start || stone.weight > _caratRange.end)
+        return false;
+      if (stone.total_price < _priceRange.start ||
+          stone.total_price > _priceRange.end)
+        return false;
+
+      // --- 5. COLOR / FANCY LOGIC ---
       if (isFancySearch) {
         bool isStoneFancy =
             stone.colorStr.toLowerCase().contains("fancy") ||
             (stone.fancy_color != null && stone.fancy_color.isNotEmpty);
-        if (selectedFancyColorId == null) {
-          matchesColor = isStoneFancy;
-        } else {
-          String searchColor = selectedFancyColor?.toUpperCase() ?? "";
-          matchesColor =
-              (stone.id == selectedFancyColorId) ||
-              stone.colorStr.toUpperCase().contains(searchColor) ||
-              stone.fancy_color.toUpperCase().contains(searchColor);
-        }
-        int stoneIntensityIdx = -1;
 
+        if (selectedFancyColorId == null) {
+          if (!isStoneFancy) return false;
+        } else {
+          bool colorMatch =
+              (stone.id == selectedFancyColorId) ||
+              stone.colorStr.toUpperCase().contains(searchFancyUpper) ||
+              stone.fancy_color.toUpperCase().contains(searchFancyUpper);
+          if (!colorMatch) return false;
+        }
+
+        // Saturation
         String intensitySearchString = "${stone.fancy_color} ${stone.colorStr}"
             .toUpperCase();
-
-        stoneIntensityIdx = saturationLabels.indexWhere(
+        int stoneIntensityIdx = saturationLabels.indexWhere(
           (label) => intensitySearchString.contains(label.toUpperCase()),
         );
-
         if (stoneIntensityIdx != -1) {
-          bool matchesSaturation =
-              (stoneIntensityIdx >= _saturationRange.start.toInt() &&
-              stoneIntensityIdx <= _saturationRange.end.toInt());
-          if (!matchesSaturation) return false;
+          if (stoneIntensityIdx < _saturationRange.start.toInt() ||
+              stoneIntensityIdx > _saturationRange.end.toInt())
+            return false;
         }
       } else {
         int colorIdx = shadeLabels.indexOf(stone.colorStr.trim().toUpperCase());
-        matchesColor =
-            (colorIdx >= _colorRange.start.toInt() &&
-            colorIdx <= _colorRange.end.toInt());
+        if (colorIdx < _colorRange.start.toInt() ||
+            colorIdx > _colorRange.end.toInt())
+          return false;
       }
-      // 2. Clarity Logic
+
+      // --- 6. CLARITY ---
       int stoneClarityIdx = clarityLabels.indexOf(
         stone.clarityStr.trim().toUpperCase(),
       );
-      bool matchesClarity =
-          (stoneClarityIdx >= _clarityRange.start.toInt() &&
-          stoneClarityIdx <= _clarityRange.end.toInt());
-      // 1. CUT LOGIC
-      int stoneCutIdx = -1;
-      const cutMapping = {
-        'ID': 0, // IDEAL
-        'EX': 1, // EXCELLENT
-        'VG': 2, // VERY GOOD
-        'GD': 3, // GOOD
-        'FR': 4, // FAIR
-      };
-      String code = stone.cut_code.trim().toUpperCase();
-      if (cutMapping.containsKey(code)) {
-        stoneCutIdx = cutMapping[code]!;
-      } else {
-        stoneCutIdx = cutLabels.indexOf(stone.cut.trim().toUpperCase());
-      }
-      bool matchesCut =
-          (stoneCutIdx >= _cutRange.start.toInt() &&
-          stoneCutIdx <= _cutRange.end.toInt());
-      if (stoneCutIdx == -1) matchesCut = true;
-      // 2. POLISH LOGIC
-      int stonePolishIdx = -1;
-      const polishMapping = {
-        'EX': 0, // EXCELLENT (Matches your first label)
-        'VG': 1, // VERY GOOD
-        'GD': 2, // GOOD
-        'FR': 3, // FAIR
-      };
-      String polishCode = stone.polish.trim().toUpperCase();
-      if (polishMapping.containsKey(polishCode)) {
-        stonePolishIdx = polishMapping[polishCode]!;
-      } else {
-        stonePolishIdx = polishLabels.indexOf(polishCode);
-      }
-      bool matchesPolish =
-          (stonePolishIdx >= _polishRange.start.toInt() &&
-          stonePolishIdx <= _polishRange.end.toInt());
-      if (stonePolishIdx == -1) matchesPolish = true;
-      //  3. FLUORESCENCE LOGIC
-      int stoneFlIdx = -1;
-      const flMapping = {
-        'NONE': 0,
-        'NON': 0,
-        'VERY SLIGHT': 0,
-        'SLIGHT': 1,
-        'FAINT': 1,
-        'FNT': 1,
-        'MEDIUM': 2,
-        'MED': 2,
-        'STRONG': 3,
-        'STG': 3,
-        'VERY STRONG': 3,
-        'VST': 3,
-      };
-      String intensity = stone.fl_intensity.trim().toUpperCase();
-      if (flMapping.containsKey(intensity)) {
-        stoneFlIdx = flMapping[intensity]!;
-      } else {
-        stoneFlIdx = flLabels.indexOf(intensity);
-      }
-      bool matchesFl =
-          (stoneFlIdx >= _flRange.start.toInt() &&
-          stoneFlIdx <= _flRange.end.toInt());
-      if (stoneFlIdx == -1) matchesFl = true;
-      // 5. SYMMETRY LOGIC
-      int stoneSymIdx = -1;
-      const symMapping = {
-        'EX': 3, // EXCELLENT
-        'VG': 2, // VERY GOOD
-        'GD': 1, // GOOD
-        'FAIR': 0, // FAIR
-        'PR': 0, // POOR (Mapping Poor to the start of the slider)
-        'POOR': 0,
-      };
-      String symmetryCode = stone.symmetry.trim().toUpperCase();
-      if (symMapping.containsKey(symmetryCode)) {
-        stoneSymIdx = symMapping[symmetryCode]!;
-      } else {
-        stoneSymIdx = symLabels.indexOf(symmetryCode);
-      }
-      bool matchesSym =
-          (stoneSymIdx >= _symRange.start.toInt() &&
-          stoneSymIdx <= _symRange.end.toInt());
-      if (stoneSymIdx == -1) matchesSym = true;
-      // 6. DEPTH % LOGIC
-      double stoneDepth = 0.0;
-      if (stone.depth is String) {
-        stoneDepth = double.tryParse(stone.depth as String) ?? 0.0;
-      } else {
-        stoneDepth = stone.depth.toDouble();
-      }
-      bool matchesDepth =
-          (stoneDepth >= _depthRange.start && stoneDepth <= _depthRange.end);
-      if (stoneDepth == 0) matchesDepth = true;
-      // 7. TABLE % LOGIC
-      double stoneTable = 0.0;
-      if (stone.table is String) {
-        stoneTable = double.tryParse(stone.table as String) ?? 0.0;
-      } else {
-        stoneTable = (stone.table as num).toDouble();
-      }
-      bool matchesTable =
-          (stoneTable >= _tableRange.start && stoneTable <= _tableRange.end);
-      if (stoneTable == 0) matchesTable = true;
+      if (stoneClarityIdx < _clarityRange.start.toInt() ||
+          stoneClarityIdx > _clarityRange.end.toInt())
+        return false;
 
-      final bool matchesShape = (selectedShape == "Other")
-          ? stone.shapeStr.toUpperCase() != "ROUND"
-          : (selectedShapeId <= 0 || selectedShape == "ALL")
-          ? true
-          : stone.shapeStr.toUpperCase().contains(
-              selectedShape.toUpperCase().trim(),
-            );
-      // final bool matchesShape =
-      //     (selectedShapeId <= 0 ||
-      //         selectedShape == "ALL" ||
-      //         selectedShape == "Other")
-      //     ? true
-      //     : stone.shapeStr.toUpperCase().contains(
-      //         selectedShape.toUpperCase().trim(),
-      //       );
-      final bool matchesCarat =
-          stone.weight >= _caratRange.start && stone.weight <= _caratRange.end;
-      final bool matchesPrice =
-          stone.total_price >= _priceRange.start &&
-          stone.total_price <= _priceRange.end;
-      final String stoneName = (stone.stoneName).toUpperCase();
-      // final bool matchesOrigin = (selectedOrigin == 1)
-      //     ? (stoneName.contains("LAB") || stoneName.contains("LGD"))
-      //     : (stoneName.contains("NATURAL") || stoneName.contains("NAT"));
-      final bool matchesOrigin = (selectedOrigin == 1)
-          ? stone.isLab
-          : !stone.isLab;
-      return matchesShape &&
-          matchesCarat &&
-          matchesPrice &&
-          matchesColor &&
-          matchesOrigin &&
-          matchesClarity &&
-          matchesCut &&
-          matchesPolish &&
-          matchesFl &&
-          matchesSym &&
-          matchesDepth &&
-          matchesTable;
+      // --- 7. CUT GRADE ---
+      String cutCode = stone.cut_code.trim().toUpperCase();
+      int stoneCutIdx =
+          cutMapping[cutCode] ??
+          cutLabels.indexOf(stone.cut.trim().toUpperCase());
+      if (stoneCutIdx != -1) {
+        if (stoneCutIdx < _cutRange.start.toInt() ||
+            stoneCutIdx > _cutRange.end.toInt())
+          return false;
+      }
+
+      // --- 8. POLISH ---
+      String pCode = stone.polish.trim().toUpperCase();
+      int stonePolishIdx = polishMapping[pCode] ?? polishLabels.indexOf(pCode);
+      if (stonePolishIdx != -1) {
+        if (stonePolishIdx < _polishRange.start.toInt() ||
+            stonePolishIdx > _polishRange.end.toInt())
+          return false;
+      }
+
+      // --- 9. SYMMETRY ---
+      String sCode = stone.symmetry.trim().toUpperCase();
+      int stoneSymIdx = symMapping[sCode] ?? symLabels.indexOf(sCode);
+      if (stoneSymIdx != -1) {
+        if (stoneSymIdx < _symRange.start.toInt() ||
+            stoneSymIdx > _symRange.end.toInt())
+          return false;
+      }
+      // --- 10. FLUORESCENCE (ADDED HERE) ---
+      String flIntensity = stone.fl_intensity.trim().toUpperCase();
+      int stoneFlIdx = flMapping[flIntensity] ?? flLabels.indexOf(flIntensity);
+      if (stoneFlIdx != -1) {
+        if (stoneFlIdx < _flRange.start.toInt() ||
+            stoneFlIdx > _flRange.end.toInt())
+          return false;
+      }
+      // --- 11. MEASUREMENTS (Depth/Table) ---
+      if (stone.depth != 0 &&
+          (stone.depth < _depthRange.start || stone.depth > _depthRange.end))
+        return false;
+      if (stone.table != 0 &&
+          (stone.table < _tableRange.start || stone.table > _tableRange.end))
+        return false;
+
+      return true; // Diamond passed all tests!
     }).toList();
-    return filtered;
+    // final List<GmssStone> filtered = allStones.where((stone) {
+    //   bool matchesColor = false;
+    //   if (isFancySearch) {
+    //     bool isStoneFancy =
+    //         stone.colorStr.toLowerCase().contains("fancy") ||
+    //         (stone.fancy_color != null && stone.fancy_color.isNotEmpty);
+    //     if (selectedFancyColorId == null) {
+    //       matchesColor = isStoneFancy;
+    //     } else {
+    //       String searchColor = selectedFancyColor?.toUpperCase() ?? "";
+    //       matchesColor =
+    //           (stone.id == selectedFancyColorId) ||
+    //           stone.colorStr.toUpperCase().contains(searchColor) ||
+    //           stone.fancy_color.toUpperCase().contains(searchColor);
+    //     }
+    //     int stoneIntensityIdx = -1;
+    //
+    //     String intensitySearchString = "${stone.fancy_color} ${stone.colorStr}"
+    //         .toUpperCase();
+    //
+    //     stoneIntensityIdx = saturationLabels.indexWhere(
+    //       (label) => intensitySearchString.contains(label.toUpperCase()),
+    //     );
+    //
+    //     if (stoneIntensityIdx != -1) {
+    //       bool matchesSaturation =
+    //           (stoneIntensityIdx >= _saturationRange.start.toInt() &&
+    //           stoneIntensityIdx <= _saturationRange.end.toInt());
+    //       if (!matchesSaturation) return false;
+    //     }
+    //   } else {
+    //     int colorIdx = shadeLabels.indexOf(stone.colorStr.trim().toUpperCase());
+    //     matchesColor =
+    //         (colorIdx >= _colorRange.start.toInt() &&
+    //         colorIdx <= _colorRange.end.toInt());
+    //   }
+    //   // 2. Clarity Logic
+    //   int stoneClarityIdx = clarityLabels.indexOf(
+    //     stone.clarityStr.trim().toUpperCase(),
+    //   );
+    //   bool matchesClarity =
+    //       (stoneClarityIdx >= _clarityRange.start.toInt() &&
+    //       stoneClarityIdx <= _clarityRange.end.toInt());
+    //   // 1. CUT LOGIC
+    //   int stoneCutIdx = -1;
+    //
+    //   String code = stone.cut_code.trim().toUpperCase();
+    //   if (cutMapping.containsKey(code)) {
+    //     stoneCutIdx = cutMapping[code]!;
+    //   } else {
+    //     stoneCutIdx = cutLabels.indexOf(stone.cut.trim().toUpperCase());
+    //   }
+    //   bool matchesCut =
+    //       (stoneCutIdx >= _cutRange.start.toInt() &&
+    //       stoneCutIdx <= _cutRange.end.toInt());
+    //   if (stoneCutIdx == -1) matchesCut = true;
+    //   // 2. POLISH LOGIC
+    //   int stonePolishIdx = -1;
+    //
+    //   String polishCode = stone.polish.trim().toUpperCase();
+    //   if (polishMapping.containsKey(polishCode)) {
+    //     stonePolishIdx = polishMapping[polishCode]!;
+    //   } else {
+    //     stonePolishIdx = polishLabels.indexOf(polishCode);
+    //   }
+    //   bool matchesPolish =
+    //       (stonePolishIdx >= _polishRange.start.toInt() &&
+    //       stonePolishIdx <= _polishRange.end.toInt());
+    //   if (stonePolishIdx == -1) matchesPolish = true;
+    //   //  3. FLUORESCENCE LOGIC
+    //   int stoneFlIdx = -1;
+    //
+    //   String intensity = stone.fl_intensity.trim().toUpperCase();
+    //   if (flMapping.containsKey(intensity)) {
+    //     stoneFlIdx = flMapping[intensity]!;
+    //   } else {
+    //     stoneFlIdx = flLabels.indexOf(intensity);
+    //   }
+    //   bool matchesFl =
+    //       (stoneFlIdx >= _flRange.start.toInt() &&
+    //       stoneFlIdx <= _flRange.end.toInt());
+    //   if (stoneFlIdx == -1) matchesFl = true;
+    //   // 5. SYMMETRY LOGIC
+    //   int stoneSymIdx = -1;
+    //
+    //   String symmetryCode = stone.symmetry.trim().toUpperCase();
+    //   if (symMapping.containsKey(symmetryCode)) {
+    //     stoneSymIdx = symMapping[symmetryCode]!;
+    //   } else {
+    //     stoneSymIdx = symLabels.indexOf(symmetryCode);
+    //   }
+    //   bool matchesSym =
+    //       (stoneSymIdx >= _symRange.start.toInt() &&
+    //       stoneSymIdx <= _symRange.end.toInt());
+    //   if (stoneSymIdx == -1) matchesSym = true;
+    //   // 6. DEPTH % LOGIC
+    //   double stoneDepth = 0.0;
+    //   if (stone.depth is String) {
+    //     stoneDepth = double.tryParse(stone.depth as String) ?? 0.0;
+    //   } else {
+    //     stoneDepth = stone.depth.toDouble();
+    //   }
+    //   bool matchesDepth =
+    //       (stoneDepth >= _depthRange.start && stoneDepth <= _depthRange.end);
+    //   if (stoneDepth == 0) matchesDepth = true;
+    //   // 7. TABLE % LOGIC
+    //   double stoneTable = 0.0;
+    //   if (stone.table is String) {
+    //     stoneTable = double.tryParse(stone.table as String) ?? 0.0;
+    //   } else {
+    //     stoneTable = (stone.table as num).toDouble();
+    //   }
+    //   bool matchesTable =
+    //       (stoneTable >= _tableRange.start && stoneTable <= _tableRange.end);
+    //   if (stoneTable == 0) matchesTable = true;
+    //
+    //   final bool matchesShape = (searchShapeUpper == "OTHER")
+    //       ? stone.shapeStr.toUpperCase() != "ROUND"
+    //       : (selectedShapeId <= 0 || selectedShape == "ALL")
+    //       ? true
+    //       : stone.shapeStr.toUpperCase().contains(searchShapeUpper);
+    //   if (!matchesShape) return false;
+    //
+    //   // final bool matchesShape =
+    //   //     (selectedShapeId <= 0 ||
+    //   //         selectedShape == "ALL" ||
+    //   //         selectedShape == "Other")
+    //   //     ? true
+    //   //     : stone.shapeStr.toUpperCase().contains(
+    //   //         selectedShape.toUpperCase().trim(),
+    //   //       );
+    //   final bool matchesCarat =
+    //       stone.weight >= _caratRange.start && stone.weight <= _caratRange.end;
+    //   final bool matchesPrice =
+    //       stone.total_price >= _priceRange.start &&
+    //       stone.total_price <= _priceRange.end;
+    //   final String stoneName = (stone.stoneName).toUpperCase();
+    //   // final bool matchesOrigin = (selectedOrigin == 1)
+    //   //     ? (stoneName.contains("LAB") || stoneName.contains("LGD"))
+    //   //     : (stoneName.contains("NATURAL") || stoneName.contains("NAT"));
+    //   final bool matchesOrigin = (selectedOrigin == 1)
+    //       ? stone.isLab
+    //       : !stone.isLab;
+    //   return matchesShape &&
+    //       matchesCarat &&
+    //       matchesPrice &&
+    //       matchesColor &&
+    //       matchesOrigin &&
+    //       matchesClarity &&
+    //       matchesCut &&
+    //       matchesPolish &&
+    //       matchesFl &&
+    //       matchesSym &&
+    //       matchesDepth &&
+    //       matchesTable;
+    // }).toList();
+    // return filtered;
   }
 
   @override
@@ -739,6 +855,8 @@ class _GmssScreenState extends State<GmssScreen>
                       setState(() {
                         selectedShape = shapeName;
                         selectedShapeId = shapeId;
+                        _totalStonesFromApi = 0;
+                        _displayedStones.clear();
                         // _cachedLabGrownMap.clear();
                         // _cachedNaturalMap.clear();
 
@@ -783,12 +901,12 @@ class _GmssScreenState extends State<GmssScreen>
                 FutureBuilder<List<GmssStone>>(
                   future: _future,
                   builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      _lastRetrievedData = snapshot.data;
-                    }
-                    bool isFirstLoad =
-                        snapshot.connectionState == ConnectionState.waiting &&
-                        _lastRetrievedData == null;
+                    // if (!snapshot.hasData) {
+                    //   _lastRetrievedData = snapshot.data;
+                    // }
+                    // bool isFirstLoad =
+                    //     snapshot.connectionState == ConnectionState.waiting &&
+                    //     _lastRetrievedData == null;
                     // if (isFirstLoad) {
                     if (snapshot.connectionState == ConnectionState.waiting) {
                       return SliverPadding(
@@ -811,20 +929,21 @@ class _GmssScreenState extends State<GmssScreen>
                         ),
                       );
                     }
-
-                    if (snapshot.hasError) {
-                      return const SliverToBoxAdapter(
-                        child: Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(40.0),
-                            child: Text(
-                              "Error loading diamonds. Please try again.",
-                            ),
-                          ),
-                        ),
-                      );
-                    }
+                    //
+                    // if (snapshot.hasError) {
+                    //   return const SliverToBoxAdapter(
+                    //     child: Center(
+                    //       child: Padding(
+                    //         padding: EdgeInsets.all(40.0),
+                    //         child: Text(
+                    //           "Error loading diamonds. Please try again.",
+                    //         ),
+                    //       ),
+                    //     ),
+                    //   );
+                    // }
                     final List<GmssStone> sourceData = snapshot.data ?? [];
+
                     final List<GmssStone> searchResults = _applyFiltering(
                       sourceData,
                     );
@@ -837,7 +956,7 @@ class _GmssScreenState extends State<GmssScreen>
                         bool matchesShape = stone.shapeStr
                             .toLowerCase()
                             .contains(selectedShape.toLowerCase().trim());
-                        final String stoneName = stone.stoneName.toUpperCase();
+                        // final String stoneName = stone.stoneName.toUpperCase();
                         bool matchesOrigin = (selectedOrigin == 1)
                             ? stone.isLab
                             : !stone.isLab;
@@ -851,11 +970,12 @@ class _GmssScreenState extends State<GmssScreen>
                       displayStones = searchResults;
                     }
 
-                    if (displayStones.isEmpty) {
+                    if (snapshot.connectionState == ConnectionState.done &&
+                        displayStones.isEmpty) {
                       return const SliverToBoxAdapter(
                         child: Center(
                           child: Padding(
-                            padding: EdgeInsets.all(80.0),
+                            padding: EdgeInsets.symmetric(vertical: 100),
                             child: Text(
                               "No diamonds match your current filters.",
                               style: TextStyle(
