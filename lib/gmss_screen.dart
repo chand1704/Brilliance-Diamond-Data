@@ -17,6 +17,7 @@ class GmssScreen extends StatefulWidget {
 
 class _GmssScreenState extends State<GmssScreen>
     with SingleTickerProviderStateMixin {
+  int _totalStonesFromApi = 0;
   final Set<String> _expandedStoneStockNos = {};
   late AnimationController _shimmerController;
   final Map<int, List<GmssStone>> _cachedLabGrownMap = {};
@@ -250,50 +251,63 @@ class _GmssScreenState extends State<GmssScreen>
   // }
   Future<List<GmssStone>> _getSmartData() async {
     int shapeId = selectedShapeId;
-    String? apiShapeName = (selectedShape == "Other")
-        ? null
-        : selectedShape; // Use the name string for the API
-    // SOLUTION: Add shapeId to the key so each shape has its own unique cache
+    String? apiShapeName = (selectedShape == "Other") ? null : selectedShape;
+
     String storageKey = (selectedOrigin == 1)
-        ? 'cached_lab_data_$shapeId'
-        : 'cached_natural_data_$shapeId';
+        ? 'excellent_lab_data_$shapeId'
+        : 'excellent_natural_data_$shapeId';
 
-    Map<int, List<GmssStone>> targetCache = (selectedOrigin == 1)
-        ? _cachedLabGrownMap
-        : _cachedNaturalMap;
-
-    // 1. Check Memory Cache
-    if (targetCache.containsKey(shapeId)) {
-      return targetCache[shapeId]!;
+    if (_cachedLabGrownMap.containsKey(shapeId) && selectedOrigin == 1) {
+      _updateTotalCount(_cachedLabGrownMap[shapeId]!.length);
+      return _cachedLabGrownMap[shapeId]!;
     }
 
-    // 2. Check LocalStorage with the shape-specific key
-    final String? localData = html.window.localStorage[storageKey];
-    if (localData != null && localData.isNotEmpty) {
-      try {
-        final List<dynamic> decoded = jsonDecode(localData);
-        final List<GmssStone> stones = decoded
-            .map((e) => GmssStone.fromJson(e, isLab: selectedOrigin == 1))
-            .toList();
-        targetCache[shapeId] = stones;
-        return stones;
-      } catch (e) {
-        debugPrint("Cache parse error: $e");
-      }
-    }
+    // // 1. Check Memory Cache
+    // if (targetCache.containsKey(shapeId)) {
+    //   return targetCache[shapeId]!;
+    // }
+    //
+    // // 2. Check LocalStorage with the shape-specific key
+    // final String? localData = html.window.localStorage[storageKey];
+    // if (localData != null && localData.isNotEmpty) {
+    //   try {
+    //     final List<dynamic> decoded = jsonDecode(localData);
+    //     final List<GmssStone> stones = decoded
+    //         .map((e) => GmssStone.fromJson(e, isLab: selectedOrigin == 1))
+    //         .toList();
+    //     targetCache[shapeId] = stones;
+    //     return stones;
+    //   } catch (e) {
+    //     debugPrint("Cache parse error: $e");
+    //   }
+    // }
 
     // 3. Fetch from API if no specific cache exists for this shape
     final data = (selectedOrigin == 1)
         ? await GmssApiService.fetchLabGrownData(shapeName: apiShapeName)
         : await GmssApiService.fetchNaturalData(shapeName: apiShapeName);
 
-    // Save using the unique shape-based key
-    html.window.localStorage[storageKey] = jsonEncode(
-      data.map((e) => e.toJson()).toList(),
-    );
+    setState(() {
+      _totalStonesFromApi = data.length;
+    });
 
-    targetCache[shapeId] = data;
+    // // Save using the unique shape-based key
+    // html.window.localStorage[storageKey] = jsonEncode(
+    //   data.map((e) => e.toJson()).toList(),
+    // );
+
+    // targetCache[shapeId] = data;
+
+    if (selectedOrigin == 1)
+      _cachedLabGrownMap[shapeId] = data;
+    else
+      _cachedNaturalMap[shapeId] = data;
+
     return data;
+  }
+
+  void _updateTotalCount(int count) {
+    if (mounted) setState(() => _totalStonesFromApi = count);
   }
 
   @override
@@ -736,7 +750,7 @@ class _GmssScreenState extends State<GmssScreen>
                     }).length;
                     return SliverToBoxAdapter(
                       child: _buildUnifiedInventoryToolbar(
-                        mainCount: filteredCount,
+                        mainCount: _totalStonesFromApi,
                         historyCount: _recentlyViewed.length,
                         compareCount: filteredCompareCount,
                         themeColor: themeColor,

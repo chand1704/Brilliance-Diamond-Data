@@ -274,47 +274,28 @@ class GmssStone {
     double safeDouble(dynamic v) {
       if (v == null) return 0.0;
       if (v is num) return v.toDouble();
-      return double.tryParse(v.toString()) ?? 0.0;
+      return double.tryParse(v.toString().replaceAll(',', '')) ?? 0.0;
     }
-
-    // 1. Correct the Shape Normalization
-    String rawShape = json['shape']?.toString() ?? 'ROUND';
-    String normalizedShape = rawShape.toUpperCase();
-
-    if (normalizedShape.contains("ROUND"))
-      normalizedShape = "ROUND";
-    else if (normalizedShape.contains("PRINCESS"))
-      normalizedShape = "PRINCESS";
-    else if (normalizedShape.contains("EMERALD"))
-      normalizedShape = "EMERALD";
-    else if (normalizedShape.contains("CUSHION"))
-      normalizedShape = "CUSHION";
 
     String measurements = json['measurements']?.toString() ?? "";
     double len = 0.0, wid = 0.0, dep = 0.0;
     if (measurements.contains('*')) {
       List<String> parts = measurements.split('*');
-      if (parts.length >= 1) len = safeDouble(parts); // ADD HERE
-      if (parts.length >= 2) wid = safeDouble(parts); // ADD HERE
-      if (parts.length >= 3) dep = safeDouble(parts); // ADD HERE
-    } else {
-      len = safeDouble(json['length']);
-      wid = safeDouble(json['width']);
-      dep = safeDouble(json['depth']);
+      if (parts.length >= 1) len = safeDouble(parts);
+      if (parts.length >= 2) wid = safeDouble(parts);
+      if (parts.length >= 3) dep = safeDouble(parts);
     }
-    // Use 'Diamond_Type' from your API if available
-    String apiLabInfo =
-        json['Diamond_Type']?.toString() ?? (isLab ? 'LAB GROWN' : 'NATURAL');
 
-    bool stoneIsLab = apiLabInfo.toUpperCase().contains("LAB") || isLab;
-
+    String growthType = json['growthType']?.toString() ?? "";
+    bool stoneIsLab = growthType.isNotEmpty || isLab;
     // String actualShape = json['shape']?.toString() ?? 'ROUND';
     // if (actualShape.toUpperCase().contains("ROUND")) actualShape = "ROUND";
+
     return GmssStone(
-      id: json['id'] ?? json['stockNo']?.hashCode ?? 0,
+      id: json['stockNo']?.hashCode ?? 0,
       stockNo: json['stockNo']?.toString() ?? '',
       // shapeStr: actualShape.trim(),
-      shapeStr: normalizedShape,
+      shapeStr: json['shape']?.toString().toUpperCase() ?? 'ROUND',
       shapeIcon: '',
       weight: safeDouble(json['weight']),
       colorStr: json['color']?.toString() ?? "",
@@ -322,8 +303,8 @@ class GmssStone {
       clarityStr: json['clarity']?.toString() ?? "",
       cut: json['cut']?.toString() ?? '',
       cut_code: json['cut']?.toString() ?? '',
-      // lab: json['lab'] ?? "GIA",
-      lab: apiLabInfo,
+      lab: json['lab']?.toString() ?? "IGI",
+      // lab: apiLabInfo,
       isLab: stoneIsLab,
       // isLab: apiLabInfo.toUpperCase().contains("LAB"),
       // isLab: isLab,
@@ -333,20 +314,16 @@ class GmssStone {
       video_link: json['videoLink']?.toString() ?? "",
       certi_file: json['certiFile']?.toString() ?? "",
       stoneName:
-          json['stoneName'] ??
-          "${json['weight']} CARAT $normalizedShape ${stoneIsLab ? 'LAB GROWN' : 'NATURAL'}",
-      gridle_condition:
-          json['girdleCondition']?.toString() ??
-          json['gridle_condition']?.toString() ??
-          '',
+          "${json['weight']} CT ${json['shape']} ${stoneIsLab ? 'LAB' : 'NATURAL'}",
+      gridle_condition: json['girdleCondition']?.toString() ?? '',
       symmetry: json['symmetry']?.toString() ?? "",
       culet_size: json['culetSize']?.toString() ?? '',
       length: len,
       ratio: safeDouble(json['ratio']),
-      width: wid > 0 ? wid : safeDouble(json['table']),
-      depth: dep > 0 ? dep : safeDouble(json['depth']),
+      width: wid,
+      depth: safeDouble(json['depth']),
       table: safeDouble(json['table']),
-      total_price: safeDouble(json['totalPrice'] ?? json['total_price'] ?? 0.0),
+      total_price: safeDouble(json['totalPrice']),
     );
   }
   Map<String, dynamic> toJson() {
