@@ -741,6 +741,7 @@ class _GmssScreenState extends State<GmssScreen>
                         selectedShapeId = shapeId;
                         // _cachedLabGrownMap.clear();
                         // _cachedNaturalMap.clear();
+
                         _future = _getSmartData();
                       });
                     },
@@ -788,7 +789,8 @@ class _GmssScreenState extends State<GmssScreen>
                     bool isFirstLoad =
                         snapshot.connectionState == ConnectionState.waiting &&
                         _lastRetrievedData == null;
-                    if (isFirstLoad) {
+                    // if (isFirstLoad) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
                       return SliverPadding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 24,
@@ -809,8 +811,20 @@ class _GmssScreenState extends State<GmssScreen>
                         ),
                       );
                     }
-                    final List<GmssStone> sourceData =
-                        snapshot.data ?? _lastRetrievedData ?? [];
+
+                    if (snapshot.hasError) {
+                      return const SliverToBoxAdapter(
+                        child: Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(40.0),
+                            child: Text(
+                              "Error loading diamonds. Please try again.",
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+                    final List<GmssStone> sourceData = snapshot.data ?? [];
                     final List<GmssStone> searchResults = _applyFiltering(
                       sourceData,
                     );
@@ -825,15 +839,35 @@ class _GmssScreenState extends State<GmssScreen>
                             .contains(selectedShape.toLowerCase().trim());
                         final String stoneName = stone.stoneName.toUpperCase();
                         bool matchesOrigin = (selectedOrigin == 1)
-                            ? (stoneName.contains("LAB") ||
-                                  stoneName.contains("LGD"))
-                            : (stoneName.contains("NATURAL") ||
-                                  stoneName.contains("NAT"));
+                            ? stone.isLab
+                            : !stone.isLab;
+                        // (stoneName.contains("LAB") ||
+                        //           stoneName.contains("LGD"))
+                        //     : (stoneName.contains("NATURAL") ||
+                        //           stoneName.contains("NAT"));
                         return matchesShape && matchesOrigin;
                       }).toList();
                     } else {
                       displayStones = searchResults;
                     }
+
+                    if (displayStones.isEmpty) {
+                      return const SliverToBoxAdapter(
+                        child: Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(80.0),
+                            child: Text(
+                              "No diamonds match your current filters.",
+                              style: TextStyle(
+                                fontSize: 16,
+                                color: Colors.grey,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+
                     return SliverPadding(
                       padding: const EdgeInsets.only(
                         left: 24,
