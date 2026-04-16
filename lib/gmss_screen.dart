@@ -17,6 +17,9 @@ class GmssScreen extends StatefulWidget {
 
 class _GmssScreenState extends State<GmssScreen>
     with SingleTickerProviderStateMixin {
+  int _currentPage = 1;
+  bool _isMoreLoading = false;
+  List<GmssStone> _displayedStones = [];
   int _totalStonesFromApi = 0;
   final Set<String> _expandedStoneStockNos = {};
   late AnimationController _shimmerController;
@@ -304,6 +307,23 @@ class _GmssScreenState extends State<GmssScreen>
       _cachedNaturalMap[shapeId] = data;
 
     return data;
+  }
+
+  Future<void> _loadNextPage() async {
+    if (_isMoreLoading) return;
+
+    setState(() => _isMoreLoading = true);
+    _currentPage++;
+
+    final nextStones = await GmssApiService.fetchLabGrownData(
+      shapeName: selectedShape,
+      page: _currentPage,
+    );
+
+    setState(() {
+      _displayedStones.addAll(nextStones);
+      _isMoreLoading = false;
+    });
   }
 
   void _updateTotalCount(int count) {
@@ -728,6 +748,7 @@ class _GmssScreenState extends State<GmssScreen>
                 ),
                 SliverToBoxAdapter(child: _buildHeader()),
                 SliverToBoxAdapter(child: _buildShapeSelector(shapeCategories)),
+
                 FutureBuilder<List<GmssStone>>(
                   future: _future,
                   builder: (context, snapshot) {
@@ -896,6 +917,29 @@ class _GmssScreenState extends State<GmssScreen>
                     );
                   },
                 ),
+                // SliverToBoxAdapter(
+                //   child: Padding(
+                //     padding: const EdgeInsets.symmetric(vertical: 30),
+                //     child: Center(
+                //       child: _isMoreLoading
+                //           ? const CircularProgressIndicator()
+                //           : ElevatedButton(
+                //               onPressed: _loadNextPage,
+                //               style: ElevatedButton.styleFrom(
+                //                 backgroundColor: themeColor,
+                //                 padding: const EdgeInsets.symmetric(
+                //                   horizontal: 40,
+                //                   vertical: 15,
+                //                 ),
+                //               ),
+                //               child: const Text(
+                //                 "LOAD NEXT PAGE",
+                //                 style: TextStyle(color: Colors.white),
+                //               ),
+                //             ),
+                //     ),
+                //   ),
+                // ),
                 const SliverToBoxAdapter(child: SizedBox(height: 100)),
               ],
             ),

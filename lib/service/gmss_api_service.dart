@@ -13,13 +13,16 @@ class GmssApiService {
   static Future<List<GmssStone>> _fetchDiamondData({
     String? shapeName,
     required bool isLab,
+    int page = 1,
   }) async {
     try {
-      final queryParams = {'auth_key': currentAuthKey};
+      final Map<String, String> queryParams = {
+        'auth_key': currentAuthKey,
+        'page': page.toString(),
+        'per-page': '50',
+      };
 
-      if (shapeName != null &&
-          shapeName.toUpperCase() != "OTHER" &&
-          shapeName.toUpperCase() != "ALL") {
+      if (shapeName != null && shapeName.toUpperCase() != "OTHER") {
         queryParams['shape'] = shapeName.toUpperCase();
       }
 
@@ -30,24 +33,20 @@ class GmssApiService {
 
       if (response.statusCode == 200) {
         final dynamic decoded = jsonDecode(response.body);
-        List<dynamic> dataList = (decoded is List)
-            ? decoded
-            : (decoded['data'] ?? []);
+        List<dynamic> dataList = decoded is List ? decoded : decoded['data'];
+        // ? decoded
+        // : (decoded['data'] ?? []);
 
-        List<GmssStone> stones = [];
-
-        int renderLimit = dataList.length > 1000 ? 1000 : dataList.length;
-        for (int i = 0; i < renderLimit; i++) {
-          try {
-            stones.add(GmssStone.fromJson(dataList[i], isLab: isLab));
-          } catch (e) {
-            debugPrint("Skipping diamond at index $i  due to error: $e");
-          }
-        }
-        debugPrint(
-          "Successfully parsed: ${dataList.length} items for the UI display",
-        );
-        return stones;
+        return dataList
+            .map((item) {
+              try {
+                return GmssStone.fromJson(item, isLab: isLab);
+              } catch (e) {
+                return null;
+              }
+            })
+            .whereType<GmssStone>()
+            .toList();
         // dataList
         //   .map((e) => GmssStone.fromJson(e, isLab: isLab))
         //   .toList();
@@ -58,11 +57,17 @@ class GmssApiService {
     return [];
   }
 
-  static Future<List<GmssStone>> fetchLabGrownData({String? shapeName}) async {
-    return _fetchDiamondData(shapeName: shapeName, isLab: true);
+  static Future<List<GmssStone>> fetchLabGrownData({
+    String? shapeName,
+    int page = 1,
+  }) async {
+    return _fetchDiamondData(shapeName: shapeName, isLab: true, page: page);
   }
 
-  static Future<List<GmssStone>> fetchNaturalData({String? shapeName}) async {
-    return _fetchDiamondData(shapeName: shapeName, isLab: false);
+  static Future<List<GmssStone>> fetchNaturalData({
+    String? shapeName,
+    int page = 1,
+  }) async {
+    return _fetchDiamondData(shapeName: shapeName, isLab: false, page: page);
   }
 }
