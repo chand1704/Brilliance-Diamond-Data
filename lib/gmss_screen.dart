@@ -256,15 +256,46 @@ class _GmssScreenState extends State<GmssScreen>
     int shapeId = selectedShapeId;
     String? apiShapeName = (selectedShape == "Other") ? null : selectedShape;
 
-    String storageKey = (selectedOrigin == 1)
-        ? 'excellent_lab_data_$shapeId'
-        : 'excellent_natural_data_$shapeId';
-
-    if (_cachedLabGrownMap.containsKey(shapeId) && selectedOrigin == 1) {
-      _updateTotalCount(_cachedLabGrownMap[shapeId]!.length);
-      return _cachedLabGrownMap[shapeId]!;
+    // Map<int, List<GmssStone>> targetCache = (selectedOrigin == 1)
+    //     ? _cachedLabGrownMap
+    //     : _cachedNaturalMap;
+    //
+    // if (targetCache.containsKey(shapeId)) {
+    //   _updateTotalCount(targetCache[shapeId]!.length);
+    //   return targetCache[shapeId]!;
+    // }
+    // 1. Memory Cache Check
+    if (_currentPage == 1) {
+      Map<int, List<GmssStone>> targetCache = (selectedOrigin == 1)
+          ? _cachedLabGrownMap
+          : _cachedNaturalMap;
+      if (targetCache.containsKey(shapeId)) {
+        setState(() => _totalStonesFromApi = 158937);
+        // _updateTotalCount(targetCache[shapeId]!.length);
+        return targetCache[shapeId]!;
+      }
+      // if (selectedOrigin == 1 && _cachedLabGrownMap.containsKey(shapeId)) {
+      //   _updateTotalCount(_cachedLabGrownMap[shapeId]!.length);
+      //   return _cachedLabGrownMap[shapeId]!;
+      // }
+      // if (selectedOrigin != 1 && _cachedNaturalMap.containsKey(shapeId)) {
+      //   _updateTotalCount(_cachedNaturalMap[shapeId]!.length);
+      //   return _cachedNaturalMap[shapeId]!;
+      // }
     }
-
+    final data = (selectedOrigin == 1)
+        ? await GmssApiService.fetchLabGrownData(
+            shapeName: apiShapeName,
+            page: _currentPage,
+          )
+        : await GmssApiService.fetchNaturalData(
+            shapeName: apiShapeName,
+            page: _currentPage,
+          );
+    // 2. Clear displayed list before fetching to show loader
+    // setState(() {
+    //   _totalStonesFromApi = 0;
+    // });
     // // 1. Check Memory Cache
     // if (targetCache.containsKey(shapeId)) {
     //   return targetCache[shapeId]!;
@@ -286,13 +317,11 @@ class _GmssScreenState extends State<GmssScreen>
     // }
 
     // 3. Fetch from API if no specific cache exists for this shape
-    final data = (selectedOrigin == 1)
-        ? await GmssApiService.fetchLabGrownData(shapeName: apiShapeName)
-        : await GmssApiService.fetchNaturalData(shapeName: apiShapeName);
+    // 2. Fetch from correct API
 
-    setState(() {
-      _totalStonesFromApi = data.length;
-    });
+    // setState(() {
+    //   _totalStonesFromApi = data.length;
+    // });
 
     // // Save using the unique shape-based key
     // html.window.localStorage[storageKey] = jsonEncode(
@@ -301,12 +330,38 @@ class _GmssScreenState extends State<GmssScreen>
 
     // targetCache[shapeId] = data;
 
-    if (selectedOrigin == 1)
-      _cachedLabGrownMap[shapeId] = data;
-    else
-      _cachedNaturalMap[shapeId] = data;
-
+    if (mounted) {
+      setState(() {
+        // if (_totalStonesFromApi == 0)
+        _totalStonesFromApi = 158937;
+        if (_currentPage == 1) {
+          if (selectedOrigin == 1) {
+            _cachedLabGrownMap[shapeId] = data;
+          } else {
+            _cachedNaturalMap[shapeId] = data;
+          }
+        }
+      });
+    }
     return data;
+  }
+
+  void _changePage(int newPage) {
+    if (newPage < 1) return;
+
+    // ટોટલ પેજ ચેક કરો (જો તમારી પાસે API માંથી ટોટલ કાઉન્ટ આવતો હોય તો)
+    // અત્યારે લિમિટ વગર જવા દઈએ છીએ
+
+    setState(() {
+      _currentPage = newPage; // અહિયાં _currentPage સેટ કરો
+      _future = _getSmartData(); // આ નવો API કોલ ટ્રીગર કરશે
+    });
+
+    _scrollController.animateTo(
+      0,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeInOut,
+    );
   }
 
   Future<void> _loadNextPage() async {
@@ -765,8 +820,9 @@ class _GmssScreenState extends State<GmssScreen>
                 onOriginChanged: (val) {
                   setState(() {
                     selectedOrigin = val;
-                    _cachedLabGrownMap.clear();
-                    _cachedNaturalMap.clear();
+                    _totalStonesFromApi = 0;
+                    _displayedStones.clear();
+                    _currentPage = 1;
                     _future = _getSmartData();
                   });
                 },
@@ -859,7 +915,7 @@ class _GmssScreenState extends State<GmssScreen>
                         _displayedStones.clear();
                         // _cachedLabGrownMap.clear();
                         // _cachedNaturalMap.clear();
-
+                        _currentPage = 1;
                         _future = _getSmartData();
                       });
                     },
@@ -1070,6 +1126,62 @@ class _GmssScreenState extends State<GmssScreen>
                             ),
                     );
                   },
+                ),
+                SliverToBoxAdapter(
+                  child: (_currentTab != 0 || _totalStonesFromApi == 0)
+                      ? const SizedBox.shrink()
+                      : Container(
+                          padding: const EdgeInsets.symmetric(vertical: 40),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              // Previous Button
+                              IconButton(
+                                onPressed: _currentPage > 1
+                                    ? () => _changePage(_currentPage - 1)
+                                    : null,
+                                icon: const Icon(
+                                  Icons.arrow_back_ios,
+                                  size: 18,
+                                ),
+                                color: themeColor,
+                              ),
+                              const SizedBox(width: 10),
+                              // Current Page Display
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 20,
+                                  vertical: 10,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: themeColor.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(30),
+                                ),
+                                child: Text(
+                                  "Page $_currentPage of ${(_totalStonesFromApi / 100).ceil()}",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: themeColor,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              // Next Button
+                              IconButton(
+                                onPressed:
+                                    _currentPage <
+                                        (_totalStonesFromApi / 100).ceil()
+                                    ? () => _changePage(_currentPage + 1)
+                                    : null,
+                                icon: const Icon(
+                                  Icons.arrow_forward_ios,
+                                  size: 18,
+                                ),
+                                color: themeColor,
+                              ),
+                            ],
+                          ),
+                        ),
                 ),
                 // SliverToBoxAdapter(
                 //   child: Padding(
