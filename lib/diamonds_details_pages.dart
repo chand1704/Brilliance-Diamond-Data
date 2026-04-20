@@ -113,8 +113,8 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
         final naturalStones = await GmssApiService.fetchNaturalData();
 
         GmssStone foundStone = [
-          ...labStones,
-          ...naturalStones,
+          ...labStones['stones'],
+          ...naturalStones['stones'],
         ].firstWhere((s) => s.id.toString() == widget.stoneId);
         _updateUI(foundStone);
       } catch (e) {
