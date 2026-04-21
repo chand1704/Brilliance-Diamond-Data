@@ -18,8 +18,10 @@ class GmssScreen extends StatefulWidget {
 class _GmssScreenState extends State<GmssScreen>
     with SingleTickerProviderStateMixin {
   int _currentPage = 1;
-  bool _isMoreLoading = false;
-  List<GmssStone> _displayedStones = [];
+  bool _isMoreLoading = false; // Nava data load thai rahya che ke nahi
+  List<GmssStone> _displayedStones =
+      []; // Display thava vala stones ni main list
+  bool _hasMoreData = true; // Have vadhare data API ma che ke nahi
   int _totalStonesFromApi = 0;
   final Set<String> _expandedStoneStockNos = {};
   late AnimationController _shimmerController;
@@ -262,13 +264,16 @@ class _GmssScreenState extends State<GmssScreen>
   //   }
   //   return newData;
   // }
-  Future<List<GmssStone>> _getSmartData() async {
+  Future<List<GmssStone>> _getSmartData({bool isLoadMore = false}) async {
     int shapeId = selectedShapeId;
     String? apiShapeName = (selectedShape == "Other" || selectedShape == "ALL")
         ? null
         : selectedShape;
 
-    // ૧. API માંથી નવો ડેટા મંગાવો
+    if (isLoadMore) {
+      setState(() => _isMoreLoading = true);
+    }
+
     final Map<String, dynamic> responseMap = (selectedOrigin == 1)
         ? await GmssApiService.fetchLabGrownData(
             shapeName: apiShapeName,
@@ -286,20 +291,30 @@ class _GmssScreenState extends State<GmssScreen>
       setState(() {
         _totalStonesFromApi = totalFromApi;
 
-        // મહત્વનો સુધારો: જૂના ડેટા સાવ કાઢી નાખો અને નવા ૧૦૦ ડેટા સેટ કરો
-        _displayedStones = List.from(newData);
-
-        // કેશિંગ (ફક્ત પેજ ૧ માટે)
-        if (_currentPage == 1) {
-          if (selectedOrigin == 1)
-            _cachedLabGrownMap[shapeId] = newData;
-          else
-            _cachedNaturalMap[shapeId] = newData;
+        if (isLoadMore) {
+          // નવો ડેટા (પેજ ૨, ૩ ના ૧૦૦ ડેટા) જૂનામાં ઉમેરો
+          _displayedStones.addAll(newData);
+        } else {
+          // પહેલી વાર ફક્ત પહેલા ૧૦૦ ડેટા
+          _displayedStones = List.from(newData);
         }
+
+        // બટન બતાવવા માટે: અત્યારે જેટલા છે તે જો કુલ ડેટા થી ઓછા હોય તો જ બટન બતાવો
+        _hasMoreData = _displayedStones.length < _totalStonesFromApi;
+
+        _isMoreLoading = false;
       });
     }
-    // snapshot.data ને ફોર્સફુલી અપડેટ કરવા માટે નવું લિસ્ટ રિટર્ન કરો
-    return List.from(newData);
+    return _displayedStones;
+  }
+
+  void _handleLoadMore() {
+    if (!_isMoreLoading && _hasMoreData) {
+      setState(() {
+        _currentPage++; // Page number badharo
+      });
+      _getSmartData(isLoadMore: true);
+    }
   }
 
   // પેજ બદલવાનું ફંક્શન
@@ -779,13 +794,12 @@ class _GmssScreenState extends State<GmssScreen>
                 onOriginChanged: (val) {
                   setState(() {
                     selectedOrigin = val;
-
-                    // --- Reset Logic ---
-                    _currentPage = 1;
-                    _totalStonesFromApi = 0;
-                    _displayedStones = [];
-
-                    _future = _getSmartData();
+                    _currentPage = 1; // પેજ ૧ કરો
+                    _displayedStones = []; // લિસ્ટ ખાલી કરો
+                    _hasMoreData = true;
+                    _future = _getSmartData(
+                      isLoadMore: false,
+                    ); // નવો ડેટા મંગાવો
                   });
                 },
                 onCaratChanged: (val) => setState(() => _caratRange = val),
@@ -873,11 +887,12 @@ class _GmssScreenState extends State<GmssScreen>
                       setState(() {
                         selectedShape = shapeName;
                         selectedShapeId = shapeId;
-                        _currentPage = 1;
-                        _totalStonesFromApi = 0;
-                        _displayedStones = [];
-                        _future = _getSmartData();
+                        _currentPage = 1; // પેજ રીસેટ કરો
+                        _displayedStones =
+                            []; // લિસ્ટ ખાલી કરો (આનાથી લાખો ડેટા મેમરીમાંથી નીકળી જશે)
+                        _hasMoreData = true;
                       });
+                      _getSmartData(isLoadMore: false); // નવો ડેટા મંગાવો
                     },
                   ),
                 ),
@@ -915,74 +930,101 @@ class _GmssScreenState extends State<GmssScreen>
                   },
                 ),
 
-                FutureBuilder<List<GmssStone>>(
-                  future: _future,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting &&
-                        _displayedStones.isEmpty) {
-                      return SliverPadding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 20,
-                        ),
-                        sliver: SliverGrid(
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 4,
-                                childAspectRatio: 0.87,
-                                crossAxisSpacing: 15,
-                                mainAxisSpacing: 15,
-                              ),
-                          delegate: SliverChildBuilderDelegate(
-                            (c, i) => _buildSkeletonCard(),
-                            childCount: 8,
+                // FutureBuilder<List<GmssStone>>(
+                //   future: _future,
+                //   builder: (context, snapshot) {
+                //     if (snapshot.connectionState == ConnectionState.waiting &&
+                //         _displayedStones.isEmpty) {
+                if (_displayedStones.isEmpty && _currentPage == 1)
+                  // જ્યારે પહેલી વાર ડેટા લોડ થતો હોય ત્યારે જ Skeleton બતાવવું
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 20,
+                    ),
+                    sliver: SliverGrid(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 4,
+                            childAspectRatio: 0.87,
+                            crossAxisSpacing: 15,
+                            mainAxisSpacing: 15,
                           ),
-                        ),
-                      );
-                    }
-                    // ડેટા સોર્સ તરીકે _displayedStones જ વાપરો
-                    final List<GmssStone> sourceData = _displayedStones;
-                    final List<GmssStone> filteredStones = _currentTab == 0
-                        ? _applyFiltering(sourceData)
-                        : (_currentTab == 1 ? _recentlyViewed : _savedStones);
-
-                    // જો ડેટા લોડ થઈ ગયો હોય પણ ખાલી હોય
-                    if (snapshot.connectionState == ConnectionState.done &&
-                        filteredStones.isEmpty) {
-                      return const SliverToBoxAdapter(
-                        child: Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(100),
-                            child: Text(
-                              "No diamonds found matching your filters.",
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-
-                    return SliverPadding(
-                      // પેજ નંબર સાથે કી જોડો જેથી Flutter દર વખતે નવું લિસ્ટ રેન્ડર કરે
-                      key: ValueKey("page-$_currentPage-$selectedShapeId"),
-                      padding: const EdgeInsets.only(
-                        left: 24,
-                        right: 24,
-                        bottom: 20,
+                      delegate: SliverChildBuilderDelegate(
+                        (c, i) => _buildSkeletonCard(),
+                        childCount: 8,
                       ),
-                      sliver: isGridView
-                          ? SliverGrid(
-                              gridDelegate:
-                                  const SliverGridDelegateWithMaxCrossAxisExtent(
-                                    maxCrossAxisExtent: 300,
-                                    childAspectRatio: 0.92,
-                                    crossAxisSpacing: 15,
-                                    mainAxisSpacing: 15,
-                                  ),
-                              delegate: SliverChildBuilderDelegate((
-                                context,
-                                index,
-                              ) {
+                    ),
+                  ),
+                if (_displayedStones.isNotEmpty || _currentPage > 1)
+                  SliverPadding(
+                    key: ValueKey("page-$_currentPage-$selectedShapeId"),
+                    padding: const EdgeInsets.only(
+                      left: 24,
+                      right: 24,
+                      bottom: 20,
+                    ),
+                    sliver: isGridView
+                        ? SliverGrid(
+                            gridDelegate:
+                                const SliverGridDelegateWithMaxCrossAxisExtent(
+                                  maxCrossAxisExtent: 300,
+                                  childAspectRatio: 0.92,
+                                  crossAxisSpacing: 15,
+                                  mainAxisSpacing: 15,
+                                ),
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) {
+                                // અહીં ફિલ્ટરિંગ લોજિક મુજબ ડેટા ફિલ્ટર કરવો
+                                // ડેટા સોર્સ તરીકે _displayedStones જ વાપરો
+                                final List<GmssStone> sourceData =
+                                    _displayedStones;
+                                final List<GmssStone> filteredStones =
+                                    _currentTab == 0
+                                    ? _applyFiltering(sourceData)
+                                    : (_currentTab == 1
+                                          ? _recentlyViewed
+                                          : _savedStones);
+
+                                // જો ડેટા લોડ થઈ ગયો હોય પણ ખાલી હોય
+                                // if (snapshot.connectionState == ConnectionState.done &&
+                                //     filteredStones.isEmpty) {
+                                //   return const SliverToBoxAdapter(
+                                //     child: Center(
+                                //       child: Padding(
+                                //         padding: EdgeInsets.all(100),
+                                //         child: Text(
+                                //           "No diamonds found matching your filters.",
+                                //         ),
+                                //       ),
+                                //     ),
+                                //   );
+                                // }
+                                if (index >= filteredStones.length) return null;
+
                                 final stone = filteredStones[index];
+                                // return SliverPadding(
+                                //   // પેજ નંબર સાથે કી જોડો જેથી Flutter દર વખતે નવું લિસ્ટ રેન્ડર કરે
+                                //   key: ValueKey("page-$_currentPage-$selectedShapeId"),
+                                //   padding: const EdgeInsets.only(
+                                //     left: 24,
+                                //     right: 24,
+                                //     bottom: 20,
+                                //   ),
+                                //   sliver: isGridView
+                                //       ? SliverGrid(
+                                //           gridDelegate:
+                                //               const SliverGridDelegateWithMaxCrossAxisExtent(
+                                //                 maxCrossAxisExtent: 300,
+                                //                 childAspectRatio: 0.92,
+                                //                 crossAxisSpacing: 15,
+                                //                 mainAxisSpacing: 15,
+                                //               ),
+                                //           delegate: SliverChildBuilderDelegate((
+                                //             context,
+                                //             index,
+                                //           ) {
+                                //             final stone = filteredStones[index];
                                 return DiamondCard(
                                   key: ValueKey(
                                     "diamond-${stone.stockNo}-${_currentPage}",
@@ -995,98 +1037,130 @@ class _GmssScreenState extends State<GmssScreen>
                                   onCardTap: () => _handleCardTap(stone),
                                   themeColor: themeColor,
                                 );
-                              }, childCount: filteredStones.length),
-                            )
-                          : SliverList(
-                              delegate: SliverChildBuilderDelegate((
-                                context,
-                                index,
-                              ) {
+                              },
+                              childCount:
+                                  (_currentTab == 0
+                                          ? _applyFiltering(_displayedStones)
+                                          : (_currentTab == 1
+                                                ? _recentlyViewed
+                                                : _savedStones))
+                                      .length,
+                            ),
+                          )
+                        : SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) {
+                                final List<GmssStone> sourceData =
+                                    _displayedStones;
+                                final List<GmssStone> filteredStones =
+                                    _currentTab == 0
+                                    ? _applyFiltering(sourceData)
+                                    : (_currentTab == 1
+                                          ? _recentlyViewed
+                                          : _savedStones);
                                 return _buildDiamondRow(
                                   filteredStones[index],
                                   themeColor,
                                 );
-                              }, childCount: filteredStones.length),
+                              },
+                              childCount:
+                                  (_currentTab == 0
+                                          ? _applyFiltering(_displayedStones)
+                                          : (_currentTab == 1
+                                                ? _recentlyViewed
+                                                : _savedStones))
+                                      .length,
                             ),
-                    );
-                  },
-                ),
+                          ),
+                  ),
+                // },
+                // ),
+                // SliverToBoxAdapter(
+                //   child: (_currentTab != 0 || _totalStonesFromApi == 0)
+                //       ? const SizedBox.shrink()
+                //       : Container(
+                //           padding: const EdgeInsets.symmetric(vertical: 40),
+                //           child: Row(
+                //             mainAxisAlignment: MainAxisAlignment.center,
+                //             children: [
+                //               IconButton(
+                //                 onPressed: _currentPage > 1
+                //                     ? () => _changePage(_currentPage - 1)
+                //                     : null,
+                //                 icon: const Icon(
+                //                   Icons.arrow_back_ios,
+                //                   size: 18,
+                //                 ),
+                //                 color: themeColor,
+                //               ),
+                //               const SizedBox(width: 10),
+                //               Container(
+                //                 padding: const EdgeInsets.symmetric(
+                //                   horizontal: 20,
+                //                   vertical: 10,
+                //                 ),
+                //                 decoration: BoxDecoration(
+                //                   color: themeColor.withOpacity(0.1),
+                //                   borderRadius: BorderRadius.circular(30),
+                //                 ),
+                //                 child: Text(
+                //                   "Page $_currentPage of ${(_totalStonesFromApi / 100).ceil() == 0 ? 1 : (_totalStonesFromApi / 100).ceil()}",
+                //                   style: TextStyle(
+                //                     fontWeight: FontWeight.bold,
+                //                     color: themeColor,
+                //                   ),
+                //                 ),
+                //               ),
+                //               const SizedBox(width: 10),
+                //               IconButton(
+                //                 onPressed:
+                //                     _currentPage <
+                //                         (_totalStonesFromApi / 100).ceil()
+                //                     ? () => _changePage(_currentPage + 1)
+                //                     : null,
+                //                 icon: const Icon(
+                //                   Icons.arrow_forward_ios,
+                //                   size: 18,
+                //                 ),
+                //                 color: themeColor,
+                //               ),
+                //             ],
+                //           ),
+                //         ),
+                // ),
                 SliverToBoxAdapter(
-                  child: (_currentTab != 0 || _totalStonesFromApi == 0)
+                  child: (_currentTab != 0 || !_hasMoreData)
                       ? const SizedBox.shrink()
-                      : Container(
-                          padding: const EdgeInsets.symmetric(vertical: 40),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              IconButton(
-                                onPressed: _currentPage > 1
-                                    ? () => _changePage(_currentPage - 1)
-                                    : null,
-                                icon: const Icon(
-                                  Icons.arrow_back_ios,
-                                  size: 18,
-                                ),
-                                color: themeColor,
-                              ),
-                              const SizedBox(width: 10),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 20,
-                                  vertical: 10,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: themeColor.withOpacity(0.1),
-                                  borderRadius: BorderRadius.circular(30),
-                                ),
-                                child: Text(
-                                  "Page $_currentPage of ${(_totalStonesFromApi / 100).ceil() == 0 ? 1 : (_totalStonesFromApi / 100).ceil()}",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: themeColor,
+                      : Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 30),
+                          child: Center(
+                            child: _isMoreLoading
+                                ? CircularProgressIndicator(color: themeColor)
+                                : ElevatedButton(
+                                    onPressed: _handleLoadMore,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: themeColor,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 50,
+                                        vertical: 15,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(30),
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      "LOAD MORE DIAMONDS",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 1,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              IconButton(
-                                onPressed:
-                                    _currentPage <
-                                        (_totalStonesFromApi / 100).ceil()
-                                    ? () => _changePage(_currentPage + 1)
-                                    : null,
-                                icon: const Icon(
-                                  Icons.arrow_forward_ios,
-                                  size: 18,
-                                ),
-                                color: themeColor,
-                              ),
-                            ],
                           ),
                         ),
                 ),
-                // SliverToBoxAdapter(
-                //   child: Padding(
-                //     padding: const EdgeInsets.symmetric(vertical: 30),
-                //     child: Center(
-                //       child: _isMoreLoading
-                //           ? const CircularProgressIndicator()
-                //           : ElevatedButton(
-                //               onPressed: _loadNextPage,
-                //               style: ElevatedButton.styleFrom(
-                //                 backgroundColor: themeColor,
-                //                 padding: const EdgeInsets.symmetric(
-                //                   horizontal: 40,
-                //                   vertical: 15,
-                //                 ),
-                //               ),
-                //               child: const Text(
-                //                 "LOAD NEXT PAGE",
-                //                 style: TextStyle(color: Colors.white),
-                //               ),
-                //             ),
-                //     ),
-                //   ),
-                // ),
+
                 const SliverToBoxAdapter(child: SizedBox(height: 100)),
               ],
             ),

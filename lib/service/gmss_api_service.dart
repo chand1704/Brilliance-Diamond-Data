@@ -141,38 +141,59 @@ class GmssApiService {
       final response = await http.post(uri);
 
       if (response.statusCode == 200) {
-        final dynamic decoded = jsonDecode(response.body);
-        List<dynamic> dataList = [];
-        int totalCount = 0;
+        try {
+          final dynamic decoded = jsonDecode(response.body);
+          List<dynamic> dataList = [];
+          int totalCountFromApi = 0;
 
-        if (decoded is Map) {
-          dataList = decoded['data'] ?? [];
-          totalCount = int.tryParse(decoded['total']?.toString() ?? '') ?? 0;
-        } else if (decoded is List) {
-          dataList = decoded;
-          totalCount = dataList.length;
+          if (decoded is Map) {
+            dataList = decoded['data'] ?? [];
+            totalCountFromApi =
+                int.tryParse(decoded['total']?.toString() ?? '') ?? 0;
+          } else if (decoded is List) {
+            dataList = decoded;
+            totalCountFromApi = dataList.length;
+          }
+
+          // --- અગત્યનો સુધારો: જો સર્વર બધો ડેટા મોકલે, તો આપણે ફક્ત ૧૦૦ જ લેવા ---
+          // final List<dynamic> limitedData = dataList.length > 100
+          //     ? dataList.sublist(0, 100)
+          //     : dataList;
+          // --- અગત્યનો સુધારો: જો સર્વર બધો ડેટા મોકલે, તો આપણે પેજ મુજબ ૧૦૦ ડેટા કાપવા ---
+          // જો સર્વર લિમિટ ના રાખતું હોય તો જ આ કામ લાગશે.
+          List<dynamic> finalDataList = [];
+          if (dataList.length > 100) {
+            int start = (page - 1) * 100;
+            int end = start + 100;
+            if (start < dataList.length) {
+              finalDataList = dataList.sublist(
+                start,
+                end > dataList.length ? dataList.length : end,
+              );
+            }
+          } else {
+            finalDataList = dataList;
+          }
+          final stones =
+              finalDataList // limitedData નો ઉપયોગ કરો
+                  .map((item) {
+                    try {
+                      return GmssStone.fromJson(item, isLab: isLab);
+                    } catch (e) {
+                      return null;
+                    }
+                  })
+                  .whereType<GmssStone>()
+                  .toList();
+
+          return {'stones': stones, 'total': totalCountFromApi};
+        } catch (jsonError) {
+          debugPrint("JSON Parsing Error: $jsonError");
+          return {'stones': <GmssStone>[], 'total': 0};
         }
-
-        // જો સર્વર લિમિટ ઇગ્નોર કરે, તો આપણે ક્લાયન્ટ સાઈડ ૧૦૦ લઈશું
-        final List<dynamic> finalDataList = dataList.length > 100
-            ? dataList.sublist(0, 100)
-            : dataList;
-
-        final stones = finalDataList
-            .map((item) {
-              try {
-                return GmssStone.fromJson(item, isLab: isLab);
-              } catch (e) {
-                return null;
-              }
-            })
-            .whereType<GmssStone>()
-            .toList();
-
-        return {'stones': stones, 'total': totalCount};
       }
     } catch (e) {
-      debugPrint("API Error: $e");
+      debugPrint("Network Error: $e");
     }
     return {'stones': <GmssStone>[], 'total': 0};
   }
