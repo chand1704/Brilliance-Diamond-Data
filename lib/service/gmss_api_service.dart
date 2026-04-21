@@ -144,27 +144,23 @@ class GmssApiService {
         try {
           final dynamic decoded = jsonDecode(response.body);
           List<dynamic> dataList = [];
-          int totalCountFromApi = 0;
+          int totalFromApi = 0;
 
           if (decoded is Map) {
             dataList = decoded['data'] ?? [];
-            totalCountFromApi =
+            totalFromApi =
                 int.tryParse(decoded['total']?.toString() ?? '') ?? 0;
           } else if (decoded is List) {
             dataList = decoded;
-            totalCountFromApi = dataList.length;
+            totalFromApi = dataList.length;
           }
 
-          // --- અગત્યનો સુધારો: જો સર્વર બધો ડેટા મોકલે, તો આપણે ફક્ત ૧૦૦ જ લેવા ---
-          // final List<dynamic> limitedData = dataList.length > 100
-          //     ? dataList.sublist(0, 100)
-          //     : dataList;
-          // --- અગત્યનો સુધારો: જો સર્વર બધો ડેટા મોકલે, તો આપણે પેજ મુજબ ૧૦૦ ડેટા કાપવા ---
-          // જો સર્વર લિમિટ ના રાખતું હોય તો જ આ કામ લાગશે.
           List<dynamic> finalDataList = [];
-          if (dataList.length > 100) {
-            int start = (page - 1) * 100;
-            int end = start + 100;
+          int itemsPerPage = 100;
+
+          if (dataList.length > itemsPerPage) {
+            int start = (page - 1) * itemsPerPage;
+            int end = start + itemsPerPage;
             if (start < dataList.length) {
               finalDataList = dataList.sublist(
                 start,
@@ -186,9 +182,9 @@ class GmssApiService {
                   .whereType<GmssStone>()
                   .toList();
 
-          return {'stones': stones, 'total': totalCountFromApi};
-        } catch (jsonError) {
-          debugPrint("JSON Parsing Error: $jsonError");
+          return {'stones': stones, 'total': totalFromApi};
+        } catch (e) {
+          debugPrint("JSON Parsing Error: $e");
           return {'stones': <GmssStone>[], 'total': 0};
         }
       }

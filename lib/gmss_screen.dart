@@ -276,11 +276,11 @@ class _GmssScreenState extends State<GmssScreen>
 
     final Map<String, dynamic> responseMap = (selectedOrigin == 1)
         ? await GmssApiService.fetchLabGrownData(
-            shapeName: apiShapeName,
+            shapeName: selectedShape,
             page: _currentPage,
           )
         : await GmssApiService.fetchNaturalData(
-            shapeName: apiShapeName,
+            shapeName: selectedShape,
             page: _currentPage,
           );
 
@@ -887,12 +887,16 @@ class _GmssScreenState extends State<GmssScreen>
                       setState(() {
                         selectedShape = shapeName;
                         selectedShapeId = shapeId;
-                        _currentPage = 1; // પેજ રીસેટ કરો
-                        _displayedStones =
-                            []; // લિસ્ટ ખાલી કરો (આનાથી લાખો ડેટા મેમરીમાંથી નીકળી જશે)
+                        _currentPage = 1; // Reset to page 1
+                        _displayedStones = []; // Clear list completely
+                        _totalStonesFromApi = 0;
                         _hasMoreData = true;
+                        _isMoreLoading = false;
                       });
-                      _getSmartData(isLoadMore: false); // નવો ડેટા મંગાવો
+                      // નવી Future સેટ કરવી જેથી જૂનો ડેટા ગ્લીચ ના કરે
+                      setState(() {
+                        _future = _getSmartData(isLoadMore: false);
+                      });
                     },
                   ),
                 ),
