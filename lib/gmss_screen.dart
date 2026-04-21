@@ -221,16 +221,20 @@ class _GmssScreenState extends State<GmssScreen>
   // Future<List<GmssStone>> _getSmartData() async {
   //   int shapeId = selectedShapeId;
   //   String? apiShapeName = (selectedShape == "Other") ? null : selectedShape;
+  //
+  //   // ૧. કેશ ચેક: ફક્ત પહેલા પેજ માટે અને જો લિસ્ટ ખાલી હોય તો જ
   //   if (_currentPage == 1 && _displayedStones.isEmpty) {
   //     Map<int, List<GmssStone>> targetCache = (selectedOrigin == 1)
   //         ? _cachedLabGrownMap
   //         : _cachedNaturalMap;
+  //
   //     if (targetCache.containsKey(shapeId)) {
   //       _displayedStones = targetCache[shapeId]!;
-  //       // અહીં પણ API કોલ ચાલુ રાખવો જેથી લેટેસ્ટ ટોટલ કાઉન્ટ મળી રહે
+  //       // અહીં રિટર્ન નથી કરવાનું, API કોલ ચાલુ રાખવો જેથી ટોટલ કાઉન્ટ અપડેટ થાય
   //     }
   //   }
-  //   // ૧. API કોલ (હંમેશા કોલ કરો જેથી dynamic count અપડેટ થાય)
+  //
+  //   // ૨. API કોલ
   //   final Map<String, dynamic> responseMap = (selectedOrigin == 1)
   //       ? await GmssApiService.fetchLabGrownData(
   //           shapeName: apiShapeName,
@@ -246,10 +250,8 @@ class _GmssScreenState extends State<GmssScreen>
   //
   //   if (mounted) {
   //     setState(() {
-  //       _totalStonesFromApi = totalFromApi; // આનાથી shape wise કાઉન્ટ અપડેટ થશે
-  //       _displayedStones = newData; // લિસ્ટમાં ફક્ત ૧૦૦ ડેટા સેટ થશે
-  //
-  //       // ફક્ત પેજ ૧ ને કેશમાં રાખવું હોય તો
+  //       _totalStonesFromApi = totalFromApi; // API માંથી આવતો સાચો કાઉન્ટ
+  //       _displayedStones = newData; // ફક્ત નવા ૧૦૦ ડેટા
   //       if (_currentPage == 1) {
   //         if (selectedOrigin == 1)
   //           _cachedLabGrownMap[shapeId] = newData;
@@ -262,21 +264,11 @@ class _GmssScreenState extends State<GmssScreen>
   // }
   Future<List<GmssStone>> _getSmartData() async {
     int shapeId = selectedShapeId;
-    String? apiShapeName = (selectedShape == "Other") ? null : selectedShape;
+    String? apiShapeName = (selectedShape == "Other" || selectedShape == "ALL")
+        ? null
+        : selectedShape;
 
-    // ૧. કેશ ચેક: ફક્ત પહેલા પેજ માટે અને જો લિસ્ટ ખાલી હોય તો જ
-    if (_currentPage == 1 && _displayedStones.isEmpty) {
-      Map<int, List<GmssStone>> targetCache = (selectedOrigin == 1)
-          ? _cachedLabGrownMap
-          : _cachedNaturalMap;
-
-      if (targetCache.containsKey(shapeId)) {
-        _displayedStones = targetCache[shapeId]!;
-        // અહીં રિટર્ન નથી કરવાનું, API કોલ ચાલુ રાખવો જેથી ટોટલ કાઉન્ટ અપડેટ થાય
-      }
-    }
-
-    // ૨. API કોલ
+    // ૧. API માંથી નવો ડેટા મંગાવો
     final Map<String, dynamic> responseMap = (selectedOrigin == 1)
         ? await GmssApiService.fetchLabGrownData(
             shapeName: apiShapeName,
@@ -292,8 +284,12 @@ class _GmssScreenState extends State<GmssScreen>
 
     if (mounted) {
       setState(() {
-        _totalStonesFromApi = totalFromApi; // API માંથી આવતો સાચો કાઉન્ટ
-        _displayedStones = newData; // ફક્ત નવા ૧૦૦ ડેટા
+        _totalStonesFromApi = totalFromApi;
+
+        // મહત્વનો સુધારો: જૂના ડેટા સાવ કાઢી નાખો અને નવા ૧૦૦ ડેટા સેટ કરો
+        _displayedStones = List.from(newData);
+
+        // કેશિંગ (ફક્ત પેજ ૧ માટે)
         if (_currentPage == 1) {
           if (selectedOrigin == 1)
             _cachedLabGrownMap[shapeId] = newData;
@@ -302,26 +298,28 @@ class _GmssScreenState extends State<GmssScreen>
         }
       });
     }
-    return newData;
+    // snapshot.data ને ફોર્સફુલી અપડેટ કરવા માટે નવું લિસ્ટ રિટર્ન કરો
+    return List.from(newData);
   }
 
+  // પેજ બદલવાનું ફંક્શન
   void _changePage(int newPage) {
     if (newPage < 1) return;
-
     int maxPages = (_totalStonesFromApi / 100).ceil();
     if (newPage > maxPages) return;
 
     setState(() {
       _currentPage = newPage;
-      _displayedStones = []; // લિસ્ટ ખાલી કરો જેથી શિમર/લોડર દેખાય
-      _future = _getSmartData(); // આ API કોલ કરી નવા ડેટા લાવશે
+      _displayedStones = []; // શિમર બતાવવા માટે લિસ્ટ ખાલી કરો
+
+      // નવો Future ઓબ્જેક્ટ બનાવો (આનાથી જ ડેટા બદલાશે)
+      _future = _getSmartData();
     });
 
-    // પેજની ઉપર જવા માટે
     _scrollController.animateTo(
       0,
-      duration: const Duration(milliseconds: 500), // થોડો સ્મૂધ સમય આપો
-      curve: Curves.easeInOut,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeIn,
     );
   }
 
@@ -875,14 +873,10 @@ class _GmssScreenState extends State<GmssScreen>
                       setState(() {
                         selectedShape = shapeName;
                         selectedShapeId = shapeId;
-
-                        _currentPage = 1; // પેજ હંમેશા ૧ થી શરૂ થવું જોઈએ
-                        _totalStonesFromApi =
-                            0; // ટોટલ કાઉન્ટ ૦ કરો જેથી જૂના પેજ નંબર સંતાઈ જાય
-                        _displayedStones =
-                            []; // લિસ્ટ ખાલી કરો જેથી જૂનો ડેટા ના દેખાય
-
-                        _future = _getSmartData(); // હવે નવો ડેટા મંગાવો
+                        _currentPage = 1;
+                        _totalStonesFromApi = 0;
+                        _displayedStones = [];
+                        _future = _getSmartData();
                       });
                     },
                   ),
@@ -924,13 +918,6 @@ class _GmssScreenState extends State<GmssScreen>
                 FutureBuilder<List<GmssStone>>(
                   future: _future,
                   builder: (context, snapshot) {
-                    // if (!snapshot.hasData) {
-                    //   _lastRetrievedData = snapshot.data;
-                    // }
-                    // bool isFirstLoad =
-                    //     snapshot.connectionState == ConnectionState.waiting &&
-                    //     _lastRetrievedData == null;
-                    // if (isFirstLoad) {
                     if (snapshot.connectionState == ConnectionState.waiting &&
                         _displayedStones.isEmpty) {
                       return SliverPadding(
@@ -947,61 +934,25 @@ class _GmssScreenState extends State<GmssScreen>
                                 mainAxisSpacing: 15,
                               ),
                           delegate: SliverChildBuilderDelegate(
-                            (context, index) => _buildSkeletonCard(),
+                            (c, i) => _buildSkeletonCard(),
                             childCount: 8,
                           ),
                         ),
                       );
                     }
-                    // if (snapshot.connectionState == ConnectionState.waiting &&
-                    //     _displayedStones.isEmpty) {
-                    //   return SliverToBoxAdapter(child: _buildSkeletonCard());
-                    // }
-                    //
-                    // if (snapshot.hasError) {
-                    //   return const SliverToBoxAdapter(
-                    //     child: Center(
-                    //       child: Padding(
-                    //         padding: EdgeInsets.all(40.0),
-                    //         child: Text(
-                    //           "Error loading diamonds. Please try again.",
-                    //         ),
-                    //       ),
-                    //     ),
-                    //   );
-                    // }
-                    // final List<GmssStone> sourceData = snapshot.data ?? [];
+                    // ડેટા સોર્સ તરીકે _displayedStones જ વાપરો
                     final List<GmssStone> sourceData = _displayedStones;
+                    final List<GmssStone> filteredStones = _currentTab == 0
+                        ? _applyFiltering(sourceData)
+                        : (_currentTab == 1 ? _recentlyViewed : _savedStones);
 
-                    final List<GmssStone> searchResults = _applyFiltering(
-                      sourceData,
-                    );
-
-                    List<GmssStone> displayStones;
-                    if (_currentTab == 1) {
-                      displayStones = _recentlyViewed;
-                    } else if (_currentTab == 2) {
-                      displayStones = _savedStones.where((stone) {
-                        // bool matchesShape = stone.shapeStr
-                        //     .toLowerCase()
-                        //     .contains(selectedShape.toLowerCase().trim());
-                        // bool matchesOrigin = (selectedOrigin == 1)
-                        //     ? stone.isLab
-                        //     : !stone.isLab;
-                        return stone.shapeStr.toLowerCase().contains(
-                          selectedShape.toLowerCase(),
-                        );
-                      }).toList();
-                    } else {
-                      displayStones = searchResults;
-                    }
-
+                    // જો ડેટા લોડ થઈ ગયો હોય પણ ખાલી હોય
                     if (snapshot.connectionState == ConnectionState.done &&
-                        displayStones.isEmpty) {
+                        filteredStones.isEmpty) {
                       return const SliverToBoxAdapter(
                         child: Center(
                           child: Padding(
-                            padding: EdgeInsets.symmetric(vertical: 100),
+                            padding: EdgeInsets.all(100),
                             child: Text(
                               "No diamonds found matching your filters.",
                             ),
@@ -1009,88 +960,10 @@ class _GmssScreenState extends State<GmssScreen>
                         ),
                       );
                     }
-                    // return SliverPadding(
-                    //   padding: const EdgeInsets.only(
-                    //     left: 24,
-                    //     right: 24,
-                    //     bottom: 20,
-                    //     top: 0,
-                    //   ),
-                    //   sliver: displayStones.isEmpty
-                    //       ? const SliverToBoxAdapter(
-                    //           child: Center(child: Text("No data found")),
-                    //         )
-                    //       : (_currentTab == 2)
-                    //       ? SliverGrid(
-                    //           gridDelegate:
-                    //               const SliverGridDelegateWithFixedCrossAxisCount(
-                    //                 crossAxisCount: 2,
-                    //                 childAspectRatio: 0.87,
-                    //                 crossAxisSpacing: 20,
-                    //                 mainAxisSpacing: 20,
-                    //               ),
-                    //           delegate: SliverChildBuilderDelegate((
-                    //             context,
-                    //             index,
-                    //           ) {
-                    //             final stone = displayStones[index];
-                    //             return _buildVerticalComparison(stone);
-                    //           }, childCount: displayStones.length),
-                    //         )
-                    //       : isGridView
-                    //       ? SliverGrid(
-                    //           gridDelegate:
-                    //               const SliverGridDelegateWithMaxCrossAxisExtent(
-                    //                 maxCrossAxisExtent: 300,
-                    //                 childAspectRatio: 0.92,
-                    //                 crossAxisSpacing: 15,
-                    //                 mainAxisSpacing: 15,
-                    //               ),
-                    //           delegate: SliverChildBuilderDelegate((
-                    //             context,
-                    //             index,
-                    //           ) {
-                    //             final stone = displayStones[index];
-                    //             return DiamondCard(
-                    //               key: ValueKey(
-                    //                 "diamond-${stone.stockNo}-${_currentTab}",
-                    //               ),
-                    //               stone: stone,
-                    //               isFavorite: _savedStones.any(
-                    //                 (s) => s.stockNo == stone.stockNo,
-                    //               ),
-                    //               onFavoriteTap: () => _toggleSave(stone),
-                    //               onCardTap: () => _handleCardTap(stone),
-                    //               themeColor: themeColor,
-                    //             );
-                    //           }, childCount: displayStones.length),
-                    //         )
-                    //       : SliverMainAxisGroup(
-                    //           slivers: [
-                    //             // Subtle indicator for background refresh
-                    //             if (snapshot.connectionState ==
-                    //                 ConnectionState.waiting)
-                    //               const SliverToBoxAdapter(
-                    //                 child: LinearProgressIndicator(
-                    //                   minHeight: 2,
-                    //                   color: Colors.teal,
-                    //                   backgroundColor: Colors.transparent,
-                    //                 ),
-                    //               ),
-                    //             SliverToBoxAdapter(child: _buildListHeader()),
-                    //             SliverList(
-                    //               delegate: SliverChildBuilderDelegate((
-                    //                 context,
-                    //                 index,
-                    //               ) {
-                    //                 final stone = displayStones[index];
-                    //                 return _buildDiamondRow(stone, themeColor);
-                    //               }, childCount: displayStones.length),
-                    //             ),
-                    //           ],
-                    //         ),
-                    // );
+
                     return SliverPadding(
+                      // પેજ નંબર સાથે કી જોડો જેથી Flutter દર વખતે નવું લિસ્ટ રેન્ડર કરે
+                      key: ValueKey("page-$_currentPage-$selectedShapeId"),
                       padding: const EdgeInsets.only(
                         left: 24,
                         right: 24,
@@ -1109,11 +982,11 @@ class _GmssScreenState extends State<GmssScreen>
                                 context,
                                 index,
                               ) {
-                                final stone = displayStones[index];
+                                final stone = filteredStones[index];
                                 return DiamondCard(
                                   key: ValueKey(
-                                    "diamond-${stone.stockNo}-${_currentTab}",
-                                  ),
+                                    "diamond-${stone.stockNo}-${_currentPage}",
+                                  ), // પેજ સાથે કી જોડો
                                   stone: stone,
                                   isFavorite: _savedStones.any(
                                     (s) => s.stockNo == stone.stockNo,
@@ -1122,7 +995,7 @@ class _GmssScreenState extends State<GmssScreen>
                                   onCardTap: () => _handleCardTap(stone),
                                   themeColor: themeColor,
                                 );
-                              }, childCount: displayStones.length),
+                              }, childCount: filteredStones.length),
                             )
                           : SliverList(
                               delegate: SliverChildBuilderDelegate((
@@ -1130,10 +1003,10 @@ class _GmssScreenState extends State<GmssScreen>
                                 index,
                               ) {
                                 return _buildDiamondRow(
-                                  displayStones[index],
+                                  filteredStones[index],
                                   themeColor,
                                 );
-                              }, childCount: displayStones.length),
+                              }, childCount: filteredStones.length),
                             ),
                     );
                   },
@@ -1167,7 +1040,11 @@ class _GmssScreenState extends State<GmssScreen>
                                   borderRadius: BorderRadius.circular(30),
                                 ),
                                 child: Text(
-                                  "Page $_currentPage of ${(_totalStonesFromApi / 100).ceil()}",
+                                  "Page $_currentPage of ${(_totalStonesFromApi / 100).ceil() == 0 ? 1 : (_totalStonesFromApi / 100).ceil()}",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: themeColor,
+                                  ),
                                 ),
                               ),
                               const SizedBox(width: 10),
