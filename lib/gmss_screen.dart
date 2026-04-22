@@ -910,7 +910,10 @@ class _GmssScreenState extends State<GmssScreen>
                       _lastRetrievedData = snapshot.data;
                     }
                     final allStones = snapshot.data ?? _lastRetrievedData ?? [];
-                    final filteredCount = _applyFiltering(allStones).length;
+                    final filteredCount = _applyFiltering(
+                      _displayedStones,
+                    ).length;
+
                     final filteredCompareCount = _savedStones.where((stone) {
                       bool matchesShape = stone.shapeStr.toLowerCase().contains(
                         selectedShape.toLowerCase().trim(),
@@ -2212,6 +2215,21 @@ class _GmssScreenState extends State<GmssScreen>
 
   Widget _tabItem(String label, int index, int count, Color themeColor) {
     bool active = _currentTab == index;
+
+    // અહીં આપણે નવું લખાણ બનાવીએ છીએ
+    String displayCount = "";
+
+    if (index == 0) {
+      // ૧. ફિલ્ટર થયેલા ડેટાનો કાઉન્ટ મેળવો
+      final filteredCount = _applyFiltering(_displayedStones).length;
+
+      // ૨. "ફિલ્ટર થયેલા / કુલ (API ના)" ફોર્મેટમાં બતાવો
+      displayCount = "$filteredCount / $count";
+    } else {
+      // બાકીની ટેબ માટે જૂનું લોજિક
+      displayCount = "$count";
+    }
+
     return InkWell(
       onTap: () {
         setState(() {
@@ -2232,7 +2250,7 @@ class _GmssScreenState extends State<GmssScreen>
       child: Column(
         children: [
           Text(
-            "$label ($count)",
+            "$label ($displayCount)", // અહીં displayCount નો ઉપયોગ કર્યો
             style: TextStyle(
               fontWeight: FontWeight.w900,
               fontSize: 14,
