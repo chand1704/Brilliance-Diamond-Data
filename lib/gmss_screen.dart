@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:html' as html;
 
@@ -359,6 +360,7 @@ class _GmssScreenState extends State<GmssScreen>
     if (mounted) setState(() => _totalStonesFromApi = count);
   }
 
+  StreamSubscription? _storageSubscription;
   @override
   void initState() {
     super.initState();
@@ -369,17 +371,30 @@ class _GmssScreenState extends State<GmssScreen>
     _future = _getSmartData();
     _loadHistoryFromStorage();
     _loadSavedFromStorage();
-    html.window.onStorage.listen((html.StorageEvent e) {
+    // html.window.onStorage.listen((html.StorageEvent e) {
+    //   if (e.key == 'recent_history' || e.key == 'saved_stones') {
+    //     _loadHistoryFromStorage();
+    //     _loadSavedFromStorage();
+    //   }
+    // });
+    _storageSubscription = html.window.onStorage.listen((html.StorageEvent e) {
       if (e.key == 'recent_history' || e.key == 'saved_stones') {
-        _loadHistoryFromStorage();
-        _loadSavedFromStorage();
+        if (mounted) {
+          setState(() {
+            _loadHistoryFromStorage();
+            _loadSavedFromStorage();
+          });
+        }
       }
     });
   }
 
   @override
   void dispose() {
+    _storageSubscription?.cancel(); // લિસનર બંધ કરો
+    _shimmerController.stop(); // dispose કરતા પહેલા stop કરો
     _shimmerController.dispose();
+    _scrollController.dispose(); // આ લાઈન ખાસ ઉમેરજો જો બાકી હોય તો
     super.dispose();
   }
 
@@ -430,9 +445,18 @@ class _GmssScreenState extends State<GmssScreen>
     );
     GmssStone.addToHistory(stone);
     _loadHistoryFromStorage();
+
+    // final String url =
+    //     "${html.window.location.origin}/#/details?id=${stone.id}";
+    // html.window.open(url, "_blank");
     final String url =
         "${html.window.location.origin}/#/details?id=${stone.id}";
-    html.window.open(url, "_blank");
+
+    // નવી ટેબ ખોલો, બ્રાઉઝર આપોઆપ ત્યાં જ ફોકસ કરશે
+    // html.window.open(url, "_blank");
+
+    // નવી ટેબને બદલે આ જ ટેબમાં ખોલો
+    Navigator.pushNamed(context, '/details', arguments: stone.id);
   }
 
   List<GmssStone> _applyFiltering(List<GmssStone> allStones) {
@@ -894,16 +918,16 @@ class _GmssScreenState extends State<GmssScreen>
                       setState(() {
                         selectedShape = shapeName;
                         selectedShapeId = shapeId;
-                        _currentPage = 1; // Reset to page 1
-                        _displayedStones = []; // Clear list completely
-                        _totalStonesFromApi = 0;
+                        _currentPage = 1;
+                        _displayedStones = [];
                         _hasMoreData = true;
-                        _isMoreLoading = false;
-                      });
-                      // નવી Future સેટ કરવી જેથી જૂનો ડેટા ગ્લીચ ના કરે
-                      setState(() {
                         _future = _getSmartData(isLoadMore: false);
                       });
+
+                      // ફક્ત શેપ બદલાય ત્યારે જ પેજને ઉપર લઈ જવું
+                      if (_scrollController.hasClients) {
+                        _scrollController.jumpTo(0);
+                      }
                     },
                   ),
                 ),
