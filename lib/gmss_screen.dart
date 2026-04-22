@@ -822,6 +822,13 @@ class _GmssScreenState extends State<GmssScreen>
                   setState(() {
                     selectedFancyColorId = id;
                     selectedFancyColor = name;
+
+                    // --- આ ૩ લાઈનો અહીં પણ ઉમેરી દેવી ---
+                    _currentPage = 1;
+                    _displayedStones = [];
+                    _hasMoreData = true;
+                    // ----------------------------------
+
                     _future = _getSmartData();
                   });
                 },
@@ -1974,6 +1981,13 @@ class _GmssScreenState extends State<GmssScreen>
                 setState(() {
                   selectedShapeId = s['id'];
                   selectedShape = s['name'];
+
+                  // --- આ ૩ લાઈનો અહીં ઉમેરો ---
+                  _currentPage = 1; // પેજ રીસેટ કરશે
+                  _displayedStones = []; // લિસ્ટ ખાલી કરશે
+                  _hasMoreData = true; // નવો ડેટા લાવવા દેશે
+                  // ----------------------------
+
                   _future = _getSmartData();
                 });
               }
@@ -2116,6 +2130,13 @@ class _GmssScreenState extends State<GmssScreen>
         setState(() {
           selectedShapeId = shape['id'];
           selectedShape = shape['name'];
+
+          // --- આ ૩ લાઈનો અહીં ઉમેરો ---
+          _currentPage = 1;
+          _displayedStones = [];
+          _hasMoreData = true;
+          // -------------------------
+
           _future = _getSmartData();
         });
         Navigator.pop(context);
