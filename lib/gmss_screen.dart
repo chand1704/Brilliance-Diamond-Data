@@ -609,18 +609,22 @@ class _GmssScreenState extends State<GmssScreen>
         }
       } else {
         int colorIdx = shadeLabels.indexOf(stone.colorStr.trim().toUpperCase());
-        if (colorIdx < _colorRange.start.toInt() ||
-            colorIdx > _colorRange.end.toInt())
-          return false;
+        if (colorIdx != -1) {
+          if (colorIdx < _colorRange.start.toInt() ||
+              colorIdx > _colorRange.end.toInt())
+            return false;
+        }
       }
 
       // --- 6. CLARITY ---
       int stoneClarityIdx = clarityLabels.indexOf(
         stone.clarityStr.trim().toUpperCase(),
       );
-      if (stoneClarityIdx < _clarityRange.start.toInt() ||
-          stoneClarityIdx > _clarityRange.end.toInt())
-        return false;
+      if (stoneClarityIdx != -1) {
+        if (stoneClarityIdx < _clarityRange.start.toInt() ||
+            stoneClarityIdx > _clarityRange.end.toInt())
+          return false;
+      }
 
       // --- 7. CUT GRADE ---
       String cutCode = stone.cut_code.trim().toUpperCase();

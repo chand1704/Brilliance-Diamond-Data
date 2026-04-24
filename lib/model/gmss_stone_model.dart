@@ -286,8 +286,13 @@ class GmssStone {
       if (parts.length >= 3) dep = safeDouble(parts);
     }
 
-    String growthType = json['growthType']?.toString() ?? "";
-    bool stoneIsLab = growthType.isNotEmpty || isLab;
+    String growthType = json['growthType']?.toString().toUpperCase() ?? "";
+    bool stoneIsLab = isLab;
+    if (growthType.contains("LAB") || growthType.contains("CVD") || growthType.contains("HPHT")) {
+      stoneIsLab = true;
+    } else if (growthType.contains("NATURAL") || growthType.contains("NAT")) {
+      stoneIsLab = false;
+    }
     // String actualShape = json['shape']?.toString() ?? 'ROUND';
     // if (actualShape.toUpperCase().contains("ROUND")) actualShape = "ROUND";
 
