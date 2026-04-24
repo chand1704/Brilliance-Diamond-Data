@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 import 'dart:html' as html;
 
@@ -1204,6 +1204,7 @@ class _GmssScreenState extends State<GmssScreen>
                     onNaturalDiamondsTap: () {
                       setState(() {
                         isFancySearch = false;
+                        _refreshDisplayedStones();
                       });
                     },
                     onFancyDiamondsTap: (colorName) {
