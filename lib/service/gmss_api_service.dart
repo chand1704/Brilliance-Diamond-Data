@@ -5,9 +5,35 @@ import 'package:http/http.dart' as http;
 
 import '../model/gmss_stone_model.dart';
 
+class _DecodeParams {
+  final String jsonString;
+  final bool isLab;
+  _DecodeParams(this.jsonString, this.isLab);
+}
+
 // Top-level function for background isolate
-dynamic _decodeJson(String text) {
-  return jsonDecode(text);
+Map<String, dynamic> _decodeAndParseJson(_DecodeParams params) {
+  final decoded = jsonDecode(params.jsonString);
+  List<dynamic> dataList = [];
+  int totalFromApi = 0;
+
+  if (decoded is Map) {
+    dataList = decoded['data'] ?? [];
+    totalFromApi = int.tryParse(decoded['total']?.toString() ?? '') ?? 0;
+  } else if (decoded is List) {
+    dataList = decoded;
+    totalFromApi = dataList.length;
+  }
+
+  final stones = dataList.map((item) {
+    try {
+      return GmssStone.fromJson(item, isLab: params.isLab);
+    } catch (e) {
+      return null;
+    }
+  }).whereType<GmssStone>().toList();
+
+  return {'stones': stones, 'total': totalFromApi};
 }
 
 class GmssApiService {
@@ -25,8 +51,8 @@ class GmssApiService {
     try {
       final Map<String, String> queryParams = {
         'auth_key': authKey,
-        'page': page.toString(),
-        'per_page': '100', // API ને પેજિનેશન કરવા દો
+        'page': '1', // હવે લોકલ પેજિનેશન કરીશું
+        'per_page': '100000', // બધો ડેટા એકસાથે લાવવા
       };
 
       if (shapeName != null &&
@@ -42,48 +68,11 @@ class GmssApiService {
 
       if (response.statusCode == 200) {
         try {
-          // JSON Decoding in background to prevent UI freeze
-          final dynamic decoded = await compute(_decodeJson, response.body);
-          List<dynamic> dataList = [];
-          int totalFromApi = 0;
+          // JSON Decoding and Mapping in background to prevent UI freeze
+          final result = await compute(
+              _decodeAndParseJson, _DecodeParams(response.body, isLab));
 
-          if (decoded is Map) {
-            dataList = decoded['data'] ?? [];
-            totalFromApi =
-                int.tryParse(decoded['total']?.toString() ?? '') ?? 0;
-          } else if (decoded is List) {
-            dataList = decoded;
-            totalFromApi = dataList.length;
-          }
-
-          List<dynamic> finalDataList = [];
-          int itemsPerPage = 100;
-
-          if (dataList.length > itemsPerPage) {
-            int start = (page - 1) * itemsPerPage;
-            int end = start + itemsPerPage;
-            if (start < dataList.length) {
-              finalDataList = dataList.sublist(
-                start,
-                end > dataList.length ? dataList.length : end,
-              );
-            }
-          } else {
-            finalDataList = dataList;
-          }
-          final stones =
-              finalDataList // limitedData નો ઉપયોગ કરો
-                  .map((item) {
-                    try {
-                      return GmssStone.fromJson(item, isLab: isLab);
-                    } catch (e) {
-                      return null;
-                    }
-                  })
-                  .whereType<GmssStone>()
-                  .toList();
-
-          return {'stones': stones, 'total': totalFromApi};
+          return result;
         } catch (e) {
           debugPrint("JSON Parsing Error: $e");
           return {'stones': <GmssStone>[], 'total': 0};

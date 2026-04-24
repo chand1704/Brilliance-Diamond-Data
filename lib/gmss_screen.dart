@@ -19,6 +19,8 @@ class GmssScreen extends StatefulWidget {
 class _GmssScreenState extends State<GmssScreen>
     with SingleTickerProviderStateMixin {
   int _currentPage = 1;
+  int _localVisibleCount = 6; // લોકલ પેજિનેશન માટે 5-6 નુ ગ્રુપ
+  int _totalFilteredStonesCount = 0; // કુલ ફિલ્ટર થયેલા ડાયમંડની સંખ્યા
   bool _isMoreLoading = false; // Nava data load thai rahya che ke nahi
   List<GmssStone> _displayedStones =
       []; // Display thava vala stones ni main list
@@ -267,78 +269,65 @@ class _GmssScreenState extends State<GmssScreen>
   // }
   Future<List<GmssStone>> _getSmartData({bool isLoadMore = false}) async {
     int shapeId = selectedShapeId;
-    String? apiShapeName = (selectedShape == "Other" || selectedShape == "ALL")
-        ? null
-        : selectedShape;
 
-    if (isLoadMore) {
-      setState(() => _isMoreLoading = true);
-    } else if (_currentPage == 1) {
-      Map<int, Map<String, dynamic>> targetCache = (selectedOrigin == 1)
-          ? _cachedLabGrownMap
-          : _cachedNaturalMap;
-
-      if (targetCache.containsKey(shapeId)) {
-        final cachedData = targetCache[shapeId]!;
-        if (mounted) {
-          setState(() {
-            _displayedStones = List.from(cachedData['stones']);
-            _totalStonesFromApi = cachedData['total'];
-            _hasMoreData = _displayedStones.length < _totalStonesFromApi;
-            _isMoreLoading = false;
-          });
-        }
-        return _displayedStones;
-      }
+    if (!isLoadMore) {
+      _localVisibleCount = 6;
     }
 
-    final Map<String, dynamic> responseMap = (selectedOrigin == 1)
-        ? await GmssApiService.fetchLabGrownData(
-            shapeName: selectedShape,
-            page: _currentPage,
-          )
-        : await GmssApiService.fetchNaturalData(
-            shapeName: selectedShape,
-            page: _currentPage,
-          );
+    Map<int, Map<String, dynamic>> targetCache = (selectedOrigin == 1)
+        ? _cachedLabGrownMap
+        : _cachedNaturalMap;
 
-    final List<GmssStone> newData = responseMap['stones'];
-    final int totalFromApi = responseMap['total'];
+    if (!targetCache.containsKey(shapeId)) {
+      final Map<String, dynamic> responseMap = (selectedOrigin == 1)
+          ? await GmssApiService.fetchLabGrownData(shapeName: selectedShape)
+          : await GmssApiService.fetchNaturalData(shapeName: selectedShape);
 
-    if (mounted) {
-      setState(() {
-        _totalStonesFromApi = totalFromApi;
-
-        if (isLoadMore) {
-          // નવો ડેટા (પેજ ૨, ૩ ના ૧૦૦ ડેટા) જૂનામાં ઉમેરો
-          _displayedStones.addAll(newData);
-        } else {
-          // પહેલી વાર ફક્ત પહેલા ૧૦૦ ડેટા
-          _displayedStones = List.from(newData);
-
-          if (_currentPage == 1) {
-            Map<int, Map<String, dynamic>> targetCache = (selectedOrigin == 1)
-                ? _cachedLabGrownMap
-                : _cachedNaturalMap;
-            targetCache[shapeId] = {'stones': newData, 'total': totalFromApi};
-          }
-        }
-
-        // બટન બતાવવા માટે: અત્યારે જેટલા છે તે જો કુલ ડેટા થી ઓછા હોય તો જ બટન બતાવો
-        _hasMoreData = _displayedStones.length < _totalStonesFromApi;
-
-        _isMoreLoading = false;
-      });
+      targetCache[shapeId] = {
+        'stones': responseMap['stones'],
+        'total': responseMap['total'],
+      };
     }
+
+    _refreshDisplayedStones();
     return _displayedStones;
+  }
+
+  void _refreshDisplayedStones() {
+    if (!mounted) return;
+    int shapeId = selectedShapeId;
+    Map<int, Map<String, dynamic>> targetCache = (selectedOrigin == 1)
+        ? _cachedLabGrownMap
+        : _cachedNaturalMap;
+
+    List<GmssStone> allCachedStones = targetCache[shapeId]?['stones'] ?? [];
+    int totalFromApi = targetCache[shapeId]?['total'] ?? 0;
+    if (totalFromApi == 0 && allCachedStones.isNotEmpty) {
+      totalFromApi = allCachedStones
+          .length; // જો API માંથી ટોટલ 0 આવે તો લોકલ લિસ્ટની સાઇઝ વાપરો
+    }
+
+    List<GmssStone> filteredAllStones = _applyFiltering(allCachedStones);
+
+    setState(() {
+      _totalFilteredStonesCount = filteredAllStones.length;
+      _totalStonesFromApi = totalFromApi;
+      _displayedStones = filteredAllStones.take(_localVisibleCount).toList();
+      _hasMoreData = _localVisibleCount < filteredAllStones.length;
+      _isMoreLoading = false;
+    });
   }
 
   void _handleLoadMore() {
     if (!_isMoreLoading && _hasMoreData) {
       setState(() {
-        _currentPage++; // Page number badharo
+        _isMoreLoading = true;
       });
-      _getSmartData(isLoadMore: true);
+      // થોડો સમય રાહ જોઈને સ્મૂથ લોડિંગનો અહેસાસ આપવા
+      Future.delayed(const Duration(milliseconds: 300), () {
+        _localVisibleCount += 6; // 5-6 નુ ગ્રુપ
+        _refreshDisplayedStones();
+      });
     }
   }
 
@@ -385,15 +374,27 @@ class _GmssScreenState extends State<GmssScreen>
   }
 
   StreamSubscription? _storageSubscription;
+
+  void _scrollListener() {
+    // જો યુઝર લિસ્ટના અંતથી 300 પિક્સેલ નજીક હોય, તો નવો ડેટા મંગાવો
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 300) {
+      if (!_isMoreLoading && _hasMoreData && _currentTab == 0) {
+        _handleLoadMore();
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    _scrollController.addListener(_scrollListener); // સ્ક્રોલ લિસનર ઉમેર્યું
     _shimmerController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1400),
     )..repeat();
     _future = _getSmartData();
-    _prefetchTopShapes(); // બેકગ્રાઉન્ડમાં અન્ય શેપનો ડેટા લાવવા માટે
+    _startGentlePrefetch(); // ધીમે ધીમે બેકગ્રાઉન્ડમાં અન્ય શેપ મંગાવો
     _loadHistoryFromStorage();
     _loadSavedFromStorage();
     // html.window.onStorage.listen((html.StorageEvent e) {
@@ -416,6 +417,7 @@ class _GmssScreenState extends State<GmssScreen>
 
   @override
   void dispose() {
+    _scrollController.removeListener(_scrollListener); // લિસનર રિમૂવ કરો
     _storageSubscription?.cancel(); // લિસનર બંધ કરો
     _shimmerController.stop(); // dispose કરતા પહેલા stop કરો
     _shimmerController.dispose();
@@ -423,8 +425,8 @@ class _GmssScreenState extends State<GmssScreen>
     super.dispose();
   }
 
-  void _prefetchTopShapes() async {
-    // મુખ્ય ૯ શેપ (Round સિવાયના) નું પહેલું પેજ બેકગ્રાઉન્ડમાં મંગાવી લો
+  void _startGentlePrefetch() async {
+    // મુખ્ય શેપ (Round સિવાયના) નું બેકગ્રાઉન્ડ ડાઉનલોડ
     final List<String> topShapes = [
       'Princess',
       'Emerald',
@@ -439,41 +441,30 @@ class _GmssScreenState extends State<GmssScreen>
 
     for (String shapeName in topShapes) {
       if (!mounted) break;
+      // એક શેપ મંગાવતા પહેલા ૨ સેકન્ડ રાહ જુઓ જેથી નેટવર્ક ફ્રીઝ ન થાય અને UI સ્મૂથ રહે
+      await Future.delayed(const Duration(seconds: 2));
+      if (!mounted) break;
+
       try {
         final shapeInfo = shapeCategories.firstWhere(
           (s) => s['name'] == shapeName,
         );
         int shapeId = shapeInfo['id'];
 
-        // Lab Grown પ્રીફેચ
+        // Lab Grown પ્રીફેચ (હાલ પૂરતું Lab Grown જ મંગાવીએ, Natural જોતું હોય તો એ પણ મંગાવી શકાય)
         if (!_cachedLabGrownMap.containsKey(shapeId)) {
-          final response = await GmssApiService.fetchLabGrownData(
+          final res = await GmssApiService.fetchLabGrownData(
             shapeName: shapeName,
-            page: 1,
           );
-          if (mounted && response['stones'] != null) {
+          if (mounted && res['stones'] != null) {
             _cachedLabGrownMap[shapeId] = {
-              'stones': response['stones'],
-              'total': response['total'],
-            };
-          }
-        }
-
-        // Natural પ્રીફેચ
-        if (!_cachedNaturalMap.containsKey(shapeId)) {
-          final response = await GmssApiService.fetchNaturalData(
-            shapeName: shapeName,
-            page: 1,
-          );
-          if (mounted && response['stones'] != null) {
-            _cachedNaturalMap[shapeId] = {
-              'stones': response['stones'],
-              'total': response['total'],
+              'stones': res['stones'],
+              'total': res['total'],
             };
           }
         }
       } catch (e) {
-        // પ્રીફેચ માં એરર આવે તો ઇગ્નોર કરો
+        debugPrint("Gentle prefetch error for $shapeName: $e");
       }
     }
   }
@@ -913,41 +904,88 @@ class _GmssScreenState extends State<GmssScreen>
                     ); // નવો ડેટા મંગાવો
                   });
                 },
-                onCaratChanged: (val) => setState(() => _caratRange = val),
-                onPriceChanged: (val) => setState(() => _priceRange = val),
-                onColorChanged: (val) => setState(() => _colorRange = val),
-                onClarityChanged: (val) => setState(() => _clarityRange = val),
-                onImageToggle: (val) =>
-                    setState(() => showOnlyWithImages = val),
-                onShippingToggle: (val) => setState(() => quickShipping = val),
+                onCaratChanged: (val) {
+                  setState(() => _caratRange = val);
+                  _localVisibleCount = 6;
+                  _refreshDisplayedStones();
+                },
+                onPriceChanged: (val) {
+                  setState(() => _priceRange = val);
+                  _localVisibleCount = 6;
+                  _refreshDisplayedStones();
+                },
+                onColorChanged: (val) {
+                  setState(() => _colorRange = val);
+                  _localVisibleCount = 6;
+                  _refreshDisplayedStones();
+                },
+                onClarityChanged: (val) {
+                  setState(() => _clarityRange = val);
+                  _localVisibleCount = 6;
+                  _refreshDisplayedStones();
+                },
+                onImageToggle: (val) {
+                  setState(() => showOnlyWithImages = val);
+                  _localVisibleCount = 6;
+                  _refreshDisplayedStones();
+                },
+                onShippingToggle: (val) {
+                  setState(() => quickShipping = val);
+                  _localVisibleCount = 6;
+                  _refreshDisplayedStones();
+                },
                 onAdvancedToggle: () =>
                     setState(() => showAdvancedFilters = !showAdvancedFilters),
-                onCutChanged: (val) => setState(() => _cutRange = val),
-                onPolishChanged: (val) => setState(() => _polishRange = val),
-                onFlChanged: (val) => setState(() => _flRange = val),
-                onCertChanged: (val) => setState(() => _certRange = val),
-                onSymChanged: (val) => setState(() => _symRange = val),
-                onDepthChanged: (val) => setState(() => _depthRange = val),
-                onTableChanged: (val) => setState(() => _tableRange = val),
+                onCutChanged: (val) {
+                  setState(() => _cutRange = val);
+                  _localVisibleCount = 6;
+                  _refreshDisplayedStones();
+                },
+                onPolishChanged: (val) {
+                  setState(() => _polishRange = val);
+                  _localVisibleCount = 6;
+                  _refreshDisplayedStones();
+                },
+                onFlChanged: (val) {
+                  setState(() => _flRange = val);
+                  _localVisibleCount = 6;
+                  _refreshDisplayedStones();
+                },
+                onCertChanged: (val) {
+                  setState(() => _certRange = val);
+                  _localVisibleCount = 6;
+                  _refreshDisplayedStones();
+                },
+                onSymChanged: (val) {
+                  setState(() => _symRange = val);
+                  _localVisibleCount = 6;
+                  _refreshDisplayedStones();
+                },
+                onDepthChanged: (val) {
+                  setState(() => _depthRange = val);
+                  _localVisibleCount = 6;
+                  _refreshDisplayedStones();
+                },
+                onTableChanged: (val) {
+                  setState(() => _tableRange = val);
+                  _localVisibleCount = 6;
+                  _refreshDisplayedStones();
+                },
                 onFancyColorTap: (id, name) {
                   setState(() {
                     selectedFancyColorId = id;
                     selectedFancyColor = name;
-
-                    // --- આ ૩ લાઈનો અહીં પણ ઉમેરી દેવી ---
-                    _currentPage = 1;
-                    _displayedStones = [];
-                    _totalStonesFromApi = 0; // નવો ડેટા આવે ત્યાં સુધી 0 બતાવો
-                    _hasMoreData = true;
-                    // ----------------------------------
-
-                    _future = _getSmartData();
+                    _localVisibleCount = 6;
                   });
+                  _refreshDisplayedStones();
                 },
                 onFancyExpandToggle: () =>
                     setState(() => isFancyExpanded = !isFancyExpanded),
-                onSaturationChanged: (val) =>
-                    setState(() => _saturationRange = val),
+                onSaturationChanged: (val) {
+                  setState(() => _saturationRange = val);
+                  _localVisibleCount = 6;
+                  _refreshDisplayedStones();
+                },
                 onReset: () {
                   setState(() {
                     showOnlyWithImages = false;
@@ -961,11 +999,7 @@ class _GmssScreenState extends State<GmssScreen>
                     selectedFancyColorId = null;
                     selectedFancyColor = null;
                     isFancySearch = false;
-                    _currentPage = 1;
-                    _displayedStones = [];
-                    _totalStonesFromApi = 0;
-                    _hasMoreData = true;
-                    // _expandedStoneStockNos.clear();
+                    _localVisibleCount = 6;
                     _future = _getSmartData();
                   });
                 },
@@ -1261,34 +1295,12 @@ class _GmssScreenState extends State<GmssScreen>
                 //         ),
                 // ),
                 SliverToBoxAdapter(
-                  child: (_currentTab != 0 || !_hasMoreData)
+                  child: (_currentTab != 0 || !_hasMoreData || !_isMoreLoading)
                       ? const SizedBox.shrink()
                       : Padding(
                           padding: const EdgeInsets.symmetric(vertical: 30),
                           child: Center(
-                            child: _isMoreLoading
-                                ? CircularProgressIndicator(color: themeColor)
-                                : ElevatedButton(
-                                    onPressed: _handleLoadMore,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: themeColor,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 50,
-                                        vertical: 15,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(30),
-                                      ),
-                                    ),
-                                    child: const Text(
-                                      "LOAD MORE DIAMONDS",
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 1,
-                                      ),
-                                    ),
-                                  ),
+                            child: CircularProgressIndicator(color: themeColor),
                           ),
                         ),
                 ),
@@ -2290,16 +2302,11 @@ class _GmssScreenState extends State<GmssScreen>
     String displayCount = "";
 
     if (index == 0) {
-      // ૧. ફિલ્ટર થયેલા ડેટાનો કાઉન્ટ મેળવો
-      final filteredCount = _applyFiltering(_displayedStones).length;
+      // ૧. ફિલ્ટર થયેલા ડેટાનો સાચો કુલ આંકડો વાપરો
+      final filteredCount = _totalFilteredStonesCount;
 
-      // ૨. "ફિલ્ટર થયેલા / કુલ (API ના)" ફોર્મેટમાં બતાવો
-      if (isFancySearch) {
-        // ફેન્સી કલરમાં માત્ર ફિલ્ટર થયેલો કાઉન્ટ જ બતાવો, કારણ કે API કુલ નોર્મલ ડાયમંડનું કાઉન્ટ પણ ભેગું મોકલે છે.
-        displayCount = "$filteredCount";
-      } else {
-        displayCount = "$filteredCount / $count";
-      }
+      // માત્ર ફિલ્ટર થયેલો કાઉન્ટ જ બતાવો
+      displayCount = "$filteredCount";
     } else {
       // બાકીની ટેબ માટે જૂનું લોજિક
       displayCount = "$count";
