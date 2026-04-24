@@ -270,6 +270,19 @@ class GmssStone {
     required this.isLab,
   });
 
+  // Returns the specific fancy color if it's a fancy diamond, otherwise the normal color code.
+  String get displayColor {
+    if (fancy_color.isNotEmpty) {
+      // If colorStr contains specific intensity like "Fancy Vivid Blue", use it.
+      // Otherwise use fancy_color.
+      if (colorStr.toLowerCase().contains("fancy") && colorStr.length > 5) {
+        return colorStr;
+      }
+      return fancy_color;
+    }
+    return colorStr;
+  }
+
   factory GmssStone.fromJson(Map<String, dynamic> json, {required bool isLab}) {
     double safeDouble(dynamic v) {
       if (v == null) return 0.0;

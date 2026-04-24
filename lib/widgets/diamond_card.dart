@@ -197,7 +197,7 @@ class DiamondCardState extends State<DiamondCard> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        "${widget.stone.colorStr} • ${widget.stone.clarityStr} • ${widget.stone.lab}",
+                        "${widget.stone.displayColor} • ${widget.stone.clarityStr} • ${widget.stone.lab}",
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
