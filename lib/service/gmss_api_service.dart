@@ -1,9 +1,14 @@
 import 'dart:convert';
 
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../model/gmss_stone_model.dart';
+
+// Top-level function for background isolate
+dynamic _decodeJson(String text) {
+  return jsonDecode(text);
+}
 
 class GmssApiService {
   static const String baseUrl =
@@ -38,7 +43,8 @@ class GmssApiService {
 
       if (response.statusCode == 200) {
         try {
-          final dynamic decoded = jsonDecode(response.body);
+          // JSON Decoding in background to prevent UI freeze
+          final dynamic decoded = await compute(_decodeJson, response.body);
           List<dynamic> dataList = [];
           int totalFromApi = 0;
 
