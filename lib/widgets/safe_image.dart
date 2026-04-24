@@ -22,6 +22,8 @@ class SafeImage extends StatelessWidget {
     return Image.network(
       url,
       fit: BoxFit.contain,
+      cacheWidth: 400, // Resizes image in memory for smooth scroll
+      cacheHeight: 400,
       errorBuilder: (context, error, stackTrace) {
         return _buildShapePlaceholder();
       },
