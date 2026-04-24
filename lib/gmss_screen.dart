@@ -426,30 +426,49 @@ class _GmssScreenState extends State<GmssScreen>
   void _prefetchTopShapes() async {
     // મુખ્ય ૯ શેપ (Round સિવાયના) નું પહેલું પેજ બેકગ્રાઉન્ડમાં મંગાવી લો
     final List<String> topShapes = [
-      'Princess', 'Emerald', 'Cushion', 'Radiant', 
-      'Marquise', 'Pear', 'Oval', 'Heart', 'Asscher'
+      'Princess',
+      'Emerald',
+      'Cushion',
+      'Radiant',
+      'Marquise',
+      'Pear',
+      'Oval',
+      'Heart',
+      'Asscher',
     ];
 
     for (String shapeName in topShapes) {
       if (!mounted) break;
       try {
-        final shapeInfo = shapeCategories.firstWhere((s) => s['name'] == shapeName);
+        final shapeInfo = shapeCategories.firstWhere(
+          (s) => s['name'] == shapeName,
+        );
         int shapeId = shapeInfo['id'];
 
-        if (selectedOrigin == 1 && !_cachedLabGrownMap.containsKey(shapeId)) {
-          final response = await GmssApiService.fetchLabGrownData(shapeName: shapeName, page: 1);
+        // Lab Grown પ્રીફેચ
+        if (!_cachedLabGrownMap.containsKey(shapeId)) {
+          final response = await GmssApiService.fetchLabGrownData(
+            shapeName: shapeName,
+            page: 1,
+          );
           if (mounted && response['stones'] != null) {
             _cachedLabGrownMap[shapeId] = {
               'stones': response['stones'],
-              'total': response['total']
+              'total': response['total'],
             };
           }
-        } else if (selectedOrigin == 2 && !_cachedNaturalMap.containsKey(shapeId)) {
-          final response = await GmssApiService.fetchNaturalData(shapeName: shapeName, page: 1);
+        }
+
+        // Natural પ્રીફેચ
+        if (!_cachedNaturalMap.containsKey(shapeId)) {
+          final response = await GmssApiService.fetchNaturalData(
+            shapeName: shapeName,
+            page: 1,
+          );
           if (mounted && response['stones'] != null) {
             _cachedNaturalMap[shapeId] = {
               'stones': response['stones'],
-              'total': response['total']
+              'total': response['total'],
             };
           }
         }
@@ -581,11 +600,11 @@ class _GmssScreenState extends State<GmssScreen>
         return false;
 
       // --- 5. COLOR / FANCY LOGIC ---
-      if (isFancySearch) {
-        bool isStoneFancy =
-            stone.colorStr.toLowerCase().contains("fancy") ||
-            (stone.fancy_color != null && stone.fancy_color.isNotEmpty);
+      bool isStoneFancy =
+          stone.colorStr.toLowerCase().contains("fancy") ||
+          (stone.fancy_color.isNotEmpty);
 
+      if (isFancySearch) {
         if (selectedFancyColorId == null) {
           if (!isStoneFancy) return false;
         } else {
@@ -608,6 +627,8 @@ class _GmssScreenState extends State<GmssScreen>
             return false;
         }
       } else {
+        if (isStoneFancy) return false; // નોર્મલ સર્ચમાં ફેન્સી ડાયમંડ ના બતાવો
+
         int colorIdx = shadeLabels.indexOf(stone.colorStr.trim().toUpperCase());
         if (colorIdx != -1) {
           if (colorIdx < _colorRange.start.toInt() ||
@@ -2273,7 +2294,12 @@ class _GmssScreenState extends State<GmssScreen>
       final filteredCount = _applyFiltering(_displayedStones).length;
 
       // ૨. "ફિલ્ટર થયેલા / કુલ (API ના)" ફોર્મેટમાં બતાવો
-      displayCount = "$filteredCount / $count";
+      if (isFancySearch) {
+        // ફેન્સી કલરમાં માત્ર ફિલ્ટર થયેલો કાઉન્ટ જ બતાવો, કારણ કે API કુલ નોર્મલ ડાયમંડનું કાઉન્ટ પણ ભેગું મોકલે છે.
+        displayCount = "$filteredCount";
+      } else {
+        displayCount = "$filteredCount / $count";
+      }
     } else {
       // બાકીની ટેબ માટે જૂનું લોજિક
       displayCount = "$count";
