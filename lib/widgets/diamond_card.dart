@@ -134,91 +134,96 @@ class DiamondCardState extends State<DiamondCard> {
           //     ],
           //   ),
           // ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // IMAGE SECTION - Using Expanded to be flexible
-              Expanded(
-                flex: 3, // Takes 3 parts of the height
-                child: Stack(
-                  children: [
-                    Center(
-                      child: Padding(
-                        padding: const EdgeInsets.all(12.0),
-                        child: LayoutBuilder(
-                          builder: (context, constraints) {
-                            return SafeImage(
-                              url: widget.stone.image_link,
-                              // Use the smaller of width/height available in the grid cell
-                              size: constraints.maxHeight,
-                              stone: widget.stone,
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      top: 5,
-                      right: 5,
-                      child: IconButton(
-                        icon: Icon(
-                          widget.isFavorite
-                              ? Icons.favorite
-                              : Icons.favorite_border,
-                          color: widget.isFavorite
-                              ? widget.themeColor
-                              : Colors.grey.shade300,
-                          size: 20,
-                        ),
-                        onPressed: widget.onFavoriteTap,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // DATA SECTION - Using Flexible to wrap text
-              Flexible(
-                flex: 1, // Takes 1 part of the height
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.end,
+          child: TweenAnimationBuilder<double>(
+            duration: const Duration(milliseconds: 300),
+            tween: Tween(begin: 0.0, end: 1.0),
+            builder: (context, opacity, child) {
+              return Opacity(
+                opacity: opacity,
+                child: child,
+              );
+            },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // IMAGE SECTION - Using Expanded to be flexible
+                Expanded(
+                  flex: 3, // Takes 3 parts of the height
+                  child: Stack(
                     children: [
-                      Text(
-                        "${widget.stone.weight} CARAT ${widget.stone.shapeStr.toUpperCase()}",
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 13,
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: SafeImage(
+                            url: widget.stone.image_link,
+                            size: 160,
+                            stone: widget.stone,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        "${widget.stone.displayColor} • ${widget.stone.clarityStr} • ${widget.stone.lab}",
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 10,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        "\$${widget.stone.total_price.toStringAsFixed(2)}",
-                        style: TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 14,
-                          color: Colors.black87,
+                      Positioned(
+                        top: 5,
+                        right: 5,
+                        child: IconButton(
+                          icon: Icon(
+                            widget.isFavorite
+                                ? Icons.favorite
+                                : Icons.favorite_border,
+                            color: widget.isFavorite
+                                ? widget.themeColor
+                                : Colors.grey.shade300,
+                            size: 20,
+                          ),
+                          onPressed: widget.onFavoriteTap,
                         ),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ],
+
+                // DATA SECTION - Using Flexible to wrap text
+                Flexible(
+                  flex: 1, // Takes 1 part of the height
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Text(
+                          "${widget.stone.weight} CARAT ${widget.stone.shapeStr.toUpperCase()}",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          "${widget.stone.displayColor} • ${widget.stone.clarityStr} • ${widget.stone.lab}",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 10,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          "\$${widget.stone.total_price.toStringAsFixed(2)}",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 14,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
