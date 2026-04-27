@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:html' as html;
 
@@ -1079,15 +1079,14 @@ class _GmssScreenState extends State<GmssScreen>
                 certLabels: certLabels,
                 symLabels: symLabels,
                 onOriginChanged: (val) {
+                  if (selectedOrigin == val) return;
                   setState(() {
                     selectedOrigin = val;
-                    _currentPage = 1; // પેજ ૧ કરો
-                    _displayedStones = []; // લિસ્ટ ખાલી કરો
-                    _totalStonesFromApi = 0; // નવો ડેટા આવે ત્યાં સુધી 0 બતાવો
+                    _currentPage = 1;
+                    _displayedStones = [];
+                    _totalStonesFromApi = 0;
                     _hasMoreData = true;
-                    _future = _getSmartData(
-                      isLoadMore: false,
-                    ); // નવો ડેટા મંગાવો
+                    _future = _getSmartData(isLoadMore: false);
                   });
                 },
                 onCaratChanged: (val) {
@@ -1202,9 +1201,14 @@ class _GmssScreenState extends State<GmssScreen>
                     themeColor: themeColor,
                     shapeCategories: shapeCategories,
                     onNaturalDiamondsTap: () {
+                      if (selectedOrigin == 2 && !isFancySearch) return;
                       setState(() {
                         isFancySearch = false;
-                        _refreshDisplayedStones();
+                        selectedOrigin = 2; // Switch to Natural
+                        _currentPage = 1;
+                        _displayedStones = [];
+                        _totalStonesFromApi = 0;
+                        _future = _getSmartData(isLoadMore: false);
                       });
                     },
                     onFancyDiamondsTap: (colorName) {
