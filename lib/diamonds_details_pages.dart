@@ -99,19 +99,16 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
           stoneMap,
           isLab: stoneMap['isLab'] ?? false,
         );
-
         _updateUI(stone);
         return;
       } catch (e) {
         debugPrint("Error parsing local stone data: $e");
       }
     }
-
     if (widget.stone != null) {
       try {
         final labStones = await GmssApiService.fetchLabGrownData();
         final naturalStones = await GmssApiService.fetchNaturalData();
-
         GmssStone foundStone = [
           ...labStones['stones'],
           ...naturalStones['stones'],
@@ -133,7 +130,6 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
     });
     GmssStone.addToHistory(stone);
     _registerVideoFactory();
-
     if (stone.video_link.isNotEmpty && stone.video_link != "null") {
       final String popupViewId = 'diamond-360-viewer-${stone.id}';
       ui.platformViewRegistry.registerViewFactory(
@@ -161,12 +157,10 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
         ..autoplay = true
         ..loop = true
         ..muted = true
-        // ..controls = false
         ..setAttribute('playsinline', 'true')
         ..style.width = '100%'
         ..style.height = '100%'
         ..style.objectFit = 'cover';
-
       videoElement.load();
       return videoElement;
     });
@@ -180,7 +174,6 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
       return;
     }
     final String popupViewId = 'diamond-360-viewer-${_currentStone!.id}';
-
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
@@ -212,28 +205,6 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
                       key: ValueKey(popupViewId),
                       viewType: popupViewId,
                     ),
-                    // Positioned(
-                    //   top: 25,
-                    //   left: 30,
-                    //   child: GestureDetector(
-                    //     onTap: () => Navigator.pop(context),
-                    //     child: Container(
-                    //       padding: const EdgeInsets.all(8),
-                    //       decoration: BoxDecoration(
-                    //         color: Colors.white.withOpacity(0.9),
-                    //         shape: BoxShape.circle,
-                    //         boxShadow: [
-                    //           BoxShadow(color: Colors.black12, blurRadius: 10),
-                    //         ],
-                    //       ),
-                    //       child: const Icon(
-                    //         Icons.close,
-                    //         color: Colors.black,
-                    //         size: 24,
-                    //       ),
-                    //     ),
-                    //   ),
-                    // ),
                     Positioned(
                       top: 25,
                       left: 30,
@@ -248,7 +219,6 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
                               fontWeight: FontWeight.bold,
                               color: Colors.grey.shade600,
                               letterSpacing: 2,
-                              // decoration: TextDecoration.none,
                             ),
                           ),
                         ],
@@ -284,42 +254,8 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
             child: child,
           ),
         );
-        // return Transform.scale(
-        //   scale: Curves.easeOutBack.transform(anim1.value),
-        //   child: Opacity(opacity: anim1.value, child: child),
-        // );
       },
     );
-    // showDialog(
-    //   context: context,
-    //   builder: (context) => Dialog(
-    //     backgroundColor: Colors.white,
-    //     insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-    //     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-    //     child: Column(
-    //       mainAxisSize: MainAxisSize.min,
-    //       children: [
-    //         Align(
-    //           alignment: Alignment.centerRight,
-    //           child: IconButton(
-    //             padding: const EdgeInsets.all(12),
-    //             onPressed: () => Navigator.pop(context),
-    //             icon: const Icon(Icons.close, color: Colors.black, size: 28),
-    //           ),
-    //         ),
-    //         SizedBox(
-    //           width: MediaQuery.of(context).size.width * 0.85,
-    //           height: MediaQuery.of(context).size.height * 0.75,
-    //           child: HtmlElementView(
-    //             key: ValueKey(popupViewId),
-    //             viewType: popupViewId,
-    //           ),
-    //         ),
-    //         const SizedBox(height: 10),
-    //       ],
-    //     ),
-    //   ),
-    // );
   }
 
   Widget _buildTechRow(String label, String value, {bool isLast = false}) {
@@ -832,9 +768,7 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
             ],
           ),
         ),
-
         const SizedBox(height: 40),
-
         SizedBox(
           width: double.infinity,
           height: 58,

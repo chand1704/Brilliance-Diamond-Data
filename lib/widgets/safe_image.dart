@@ -13,7 +13,6 @@ class SafeImage extends StatelessWidget {
     required this.size,
     required this.stone,
   });
-
   @override
   Widget build(BuildContext context) {
     if (url.isEmpty || url == "null" || !url.startsWith('http')) {
