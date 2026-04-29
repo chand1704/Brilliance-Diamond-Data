@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:html' as html;
 
@@ -112,6 +112,7 @@ class _GmssScreenState extends State<GmssScreen>
   final List<GmssStone> _recentlyViewed = [];
   String selectedShape = 'Round';
   int selectedShapeId = 1;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   RangeValues _caratRange = const RangeValues(0.0, 15.00);
   RangeValues _priceRange = const RangeValues(0.0, 100000);
   int _currentTab = 0;
@@ -233,6 +234,11 @@ class _GmssScreenState extends State<GmssScreen>
     Map<int, Map<String, dynamic>> targetCache = (selectedOrigin == 1)
         ? _cachedLabGrownMap
         : _cachedNaturalMap;
+
+    debugPrint(
+      "--- SmartData: Shape=$selectedShape, Origin=${selectedOrigin == 1 ? 'Lab' : 'Natural'}, Cached=${targetCache.containsKey(shapeId)} ---",
+    );
+
     if (!targetCache.containsKey(shapeId)) {
       final Map<String, dynamic> responseMap = (selectedOrigin == 1)
           ? await GmssApiService.fetchLabGrownData(shapeName: selectedShape)
@@ -258,54 +264,64 @@ class _GmssScreenState extends State<GmssScreen>
       totalFromApi = allCachedStones.length;
     }
     setState(() => _isFiltering = true);
-    final filteredResults = await compute(_applyFilteringStatic, {
-      'stones': allCachedStones,
-      'params': {
-        'selectedShape': selectedShape,
-        'selectedShapeId': selectedShapeId,
-        'selectedOrigin': selectedOrigin,
-        'caratRangeStart': _caratRange.start,
-        'caratRangeEnd': _caratRange.end,
-        'priceRangeStart': _priceRange.start,
-        'priceRangeEnd': _priceRange.end,
-        'isFancySearch': isFancySearch,
-        'selectedFancyColor': selectedFancyColor,
-        'selectedFancyColorId': selectedFancyColorId,
-        'colorRangeStart': _colorRange.start,
-        'colorRangeEnd': _colorRange.end,
-        'clarityRangeStart': _clarityRange.start,
-        'clarityRangeEnd': _clarityRange.end,
-        'cutRangeStart': _cutRange.start,
-        'cutRangeEnd': _cutRange.end,
-        'polishRangeStart': _polishRange.start,
-        'polishRangeEnd': _polishRange.end,
-        'symRangeStart': _symRange.start,
-        'symRangeEnd': _symRange.end,
-        'flRangeStart': _flRange.start,
-        'flRangeEnd': _flRange.end,
-        'depthRangeStart': _depthRange.start,
-        'depthRangeEnd': _depthRange.end,
-        'tableRangeStart': _tableRange.start,
-        'tableRangeEnd': _tableRange.end,
-        'shadeLabels': shadeLabels,
-        'clarityLabels': clarityLabels,
-        'cutLabels': cutLabels,
-        'polishLabels': polishLabels,
-        'symLabels': symLabels,
-        'flLabels': flLabels,
-      },
-    });
-    if (!mounted) return;
-    setState(() {
-      _allFilteredStones = filteredResults;
-      _totalFilteredStonesCount = filteredResults.length;
-      _totalStonesFromApi = totalFromApi;
-      _filteredCompareCount = _savedStones.length;
-      _displayedStones = _allFilteredStones.take(_localVisibleCount).toList();
-      _hasMoreData = _localVisibleCount < _allFilteredStones.length;
-      _isFiltering = false;
-      _isMoreLoading = false;
-    });
+    try {
+      final filteredResults = await compute(_applyFilteringStatic, {
+        'stones': allCachedStones,
+        'params': {
+          'selectedShape': selectedShape,
+          'selectedShapeId': selectedShapeId,
+          'selectedOrigin': selectedOrigin,
+          'caratRangeStart': _caratRange.start,
+          'caratRangeEnd': _caratRange.end,
+          'priceRangeStart': _priceRange.start,
+          'priceRangeEnd': _priceRange.end,
+          'isFancySearch': isFancySearch,
+          'selectedFancyColor': selectedFancyColor,
+          'selectedFancyColorId': selectedFancyColorId,
+          'colorRangeStart': _colorRange.start,
+          'colorRangeEnd': _colorRange.end,
+          'clarityRangeStart': _clarityRange.start,
+          'clarityRangeEnd': _clarityRange.end,
+          'cutRangeStart': _cutRange.start,
+          'cutRangeEnd': _cutRange.end,
+          'polishRangeStart': _polishRange.start,
+          'polishRangeEnd': _polishRange.end,
+          'symRangeStart': _symRange.start,
+          'symRangeEnd': _symRange.end,
+          'flRangeStart': _flRange.start,
+          'flRangeEnd': _flRange.end,
+          'depthRangeStart': _depthRange.start,
+          'depthRangeEnd': _depthRange.end,
+          'tableRangeStart': _tableRange.start,
+          'tableRangeEnd': _tableRange.end,
+          'shadeLabels': shadeLabels,
+          'clarityLabels': clarityLabels,
+          'cutLabels': cutLabels,
+          'polishLabels': polishLabels,
+          'symLabels': symLabels,
+          'flLabels': flLabels,
+        },
+      });
+      if (!mounted) return;
+      setState(() {
+        _allFilteredStones = filteredResults;
+        _totalFilteredStonesCount = filteredResults.length;
+        _totalStonesFromApi = totalFromApi;
+        _filteredCompareCount = _savedStones.length;
+        _displayedStones = _allFilteredStones.take(_localVisibleCount).toList();
+        _hasMoreData = _localVisibleCount < _allFilteredStones.length;
+        _isFiltering = false;
+        _isMoreLoading = false;
+      });
+    } catch (e) {
+      debugPrint("Error during filtering: $e");
+      if (mounted) {
+        setState(() {
+          _isFiltering = false;
+          _isMoreLoading = false;
+        });
+      }
+    }
   }
 
   static List<GmssStone> _applyFilteringStatic(Map<String, dynamic> data) {
@@ -457,7 +473,10 @@ class _GmssScreenState extends State<GmssScreen>
       duration: const Duration(milliseconds: 1400),
     )..repeat();
     _future = _getSmartData();
-    _startGentlePrefetch();
+    // Delay prefetch to prioritize initial round data loading
+    Future.delayed(const Duration(seconds: 5), () {
+      if (mounted) _startGentlePrefetch();
+    });
     _loadHistoryFromStorage();
     _loadSavedFromStorage();
     _storageSubscription = html.window.onStorage.listen((html.StorageEvent e) {
@@ -725,7 +744,8 @@ class _GmssScreenState extends State<GmssScreen>
         });
         _refreshDisplayedStones();
       },
-      onFancyExpandToggle: () => setState(() => isFancyExpanded = !isFancyExpanded),
+      onFancyExpandToggle: () =>
+          setState(() => isFancyExpanded = !isFancyExpanded),
       onSaturationChanged: (v) {
         setState(() => _saturationRange = v);
         _refreshDisplayedStones();
@@ -733,7 +753,7 @@ class _GmssScreenState extends State<GmssScreen>
     );
 
     return Scaffold(
-      key: GlobalKey<ScaffoldState>(),
+      key: _scaffoldKey,
       backgroundColor: const Color(0xFFF8FAFB),
       drawer: isDesktop
           ? null
@@ -842,7 +862,7 @@ class _GmssScreenState extends State<GmssScreen>
                     compareCount: _filteredCompareCount,
                     themeColor: themeColor,
                     isDesktop: isDesktop,
-                    onFilterTap: () => Scaffold.of(context).openDrawer(),
+                    onFilterTap: () => _scaffoldKey.currentState?.openDrawer(),
                   ),
                 ),
                 if ((_isFiltering && _displayedStones.isEmpty) ||
@@ -879,11 +899,11 @@ class _GmssScreenState extends State<GmssScreen>
                         ? SliverGrid(
                             gridDelegate:
                                 const SliverGridDelegateWithMaxCrossAxisExtent(
-                                   maxCrossAxisExtent: 350,
-                                   childAspectRatio: 0.92,
-                                   crossAxisSpacing: 15,
-                                   mainAxisSpacing: 15,
-                                 ),
+                                  maxCrossAxisExtent: 350,
+                                  childAspectRatio: 0.92,
+                                  crossAxisSpacing: 15,
+                                  mainAxisSpacing: 15,
+                                ),
                             delegate: SliverChildBuilderDelegate(
                               (context, index) {
                                 final List<GmssStone> stones = _currentTab == 0
@@ -1325,7 +1345,8 @@ class _GmssScreenState extends State<GmssScreen>
       alignment: Alignment.center,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        shrinkWrap: true,
+        shrinkWrap: false,
+        physics: const BouncingScrollPhysics(),
         itemCount: shapeCategories.length,
         itemBuilder: (context, index) {
           final s = shapeCategories[index];

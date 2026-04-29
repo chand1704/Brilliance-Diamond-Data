@@ -49,7 +49,7 @@ class GmssApiService {
     try {
       final Map<String, String> queryParams = {
         'auth_key': authKey,
-        'page': '1',
+        'page': page.toString(),
         'per_page': '100000',
       };
       if (shapeName != null && shapeName.toUpperCase() != "ALL") {
@@ -66,8 +66,11 @@ class GmssApiService {
         }
       }
       final uri = Uri.parse(baseUrl).replace(queryParameters: queryParams);
-      debugPrint("API Request: $uri");
+      debugPrint("--- API CALL (POST): $uri ---");
+      
+      // Reverted to POST as the server returned 405 for GET
       final response = await http.post(uri);
+      
       if (response.statusCode == 200) {
         try {
           final result = await compute(
@@ -79,6 +82,8 @@ class GmssApiService {
           debugPrint("JSON Parsing Error: $e");
           return {'stones': <GmssStone>[], 'total': 0};
         }
+      } else {
+        debugPrint("API Error: ${response.statusCode} - ${response.body}");
       }
     } catch (e) {
       debugPrint("Network Error: $e");

@@ -74,54 +74,73 @@ class _MainHeaderState extends State<MainHeader> {
   }
 
   @override
+  @override
   Widget build(BuildContext context) {
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isMobile = screenWidth < 900;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 15 : 40,
+        vertical: 15,
+      ),
       decoration: BoxDecoration(
         color: Colors.white,
         border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
       ),
       child: Row(
         children: [
-          const Spacer(),
-          Row(
-            children: [
-              _hoverNavLink(
-                "Diamonds",
-                _diamondHoverController,
-                _buildMegaMenu(),
+          if (!isMobile) const Spacer(),
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _hoverNavLink(
+                    "Diamonds",
+                    _diamondHoverController,
+                    _buildMegaMenu(),
+                  ),
+                  _hoverNavLink(
+                    "Engagement",
+                    _engagementHoverController,
+                    _buildEngagementMenu(),
+                  ),
+                  _hoverNavLink(
+                    "Wedding",
+                    _weddingHoverController,
+                    _buildWeddingMenu(),
+                  ),
+                  _hoverNavLink(
+                    "Jewelry",
+                    _jewelryHoverController,
+                    _buildJewelryMenu(),
+                  ),
+                  _hoverNavLink(
+                    "About",
+                    _aboutHoverController,
+                    _buildAboutMenu(),
+                  ),
+                ],
               ),
-              _hoverNavLink(
-                "Engagement",
-                _engagementHoverController,
-                _buildEngagementMenu(),
-              ),
-              _hoverNavLink(
-                "Wedding",
-                _weddingHoverController,
-                _buildWeddingMenu(),
-              ),
-              _hoverNavLink(
-                "Jewelry",
-                _jewelryHoverController,
-                _buildJewelryMenu(),
-              ),
-              _hoverNavLink("About", _aboutHoverController, _buildAboutMenu()),
-            ],
+            ),
           ),
-          const Spacer(),
+          if (!isMobile) const Spacer(),
           IconButton(
             icon: const Icon(Icons.search, size: 20),
             onPressed: () {},
           ),
-          IconButton(
-            icon: const Icon(Icons.favorite_border, size: 20),
-            onPressed: () {},
-          ),
-          IconButton(
-            icon: const Icon(Icons.person_outline, size: 20),
-            onPressed: () {},
-          ),
+          if (!isMobile) ...[
+            IconButton(
+              icon: const Icon(Icons.favorite_border, size: 20),
+              onPressed: () {},
+            ),
+            IconButton(
+              icon: const Icon(Icons.person_outline, size: 20),
+              onPressed: () {},
+            ),
+          ],
           IconButton(
             icon: const Icon(Icons.shopping_bag_outlined, size: 20),
             onPressed: () {},
