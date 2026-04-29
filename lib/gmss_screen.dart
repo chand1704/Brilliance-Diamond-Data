@@ -131,6 +131,7 @@ class _GmssScreenState extends State<GmssScreen>
     "GOOD",
     "FAIR",
   ];
+  Timer? _debounceTimer;
   final List<String> polishLabels = ["EXCELLENT", "VERY GOOD", "GOOD", "FAIR"];
   final List<String> flLabels = ["NONE", "FAINT", "MEDIUM", "STRONG"];
   RangeValues _cutRange = const RangeValues(0, 4);
@@ -250,6 +251,13 @@ class _GmssScreenState extends State<GmssScreen>
     }
     _refreshDisplayedStones();
     return _displayedStones;
+  }
+
+  void _refreshDisplayedStonesDebounced() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      _refreshDisplayedStones();
+    });
   }
 
   void _refreshDisplayedStones() async {
@@ -664,27 +672,27 @@ class _GmssScreenState extends State<GmssScreen>
       },
       onCaratChanged: (v) {
         setState(() => _caratRange = v);
-        _refreshDisplayedStones();
+        _refreshDisplayedStonesDebounced();
       },
       onPriceChanged: (v) {
         setState(() => _priceRange = v);
-        _refreshDisplayedStones();
+        _refreshDisplayedStonesDebounced();
       },
       onColorChanged: (v) {
         setState(() => _colorRange = v);
-        _refreshDisplayedStones();
+        _refreshDisplayedStonesDebounced();
       },
       onClarityChanged: (v) {
         setState(() => _clarityRange = v);
-        _refreshDisplayedStones();
+        _refreshDisplayedStonesDebounced();
       },
       onImageToggle: (v) {
         setState(() => showOnlyWithImages = v);
-        _refreshDisplayedStones();
+        _refreshDisplayedStonesDebounced();
       },
       onShippingToggle: (v) {
         setState(() => quickShipping = v);
-        _refreshDisplayedStones();
+        _refreshDisplayedStonesDebounced();
       },
       onReset: () {
         setState(() {
@@ -711,44 +719,44 @@ class _GmssScreenState extends State<GmssScreen>
           setState(() => showAdvancedFilters = !showAdvancedFilters),
       onCutChanged: (v) {
         setState(() => _cutRange = v);
-        _refreshDisplayedStones();
+        _refreshDisplayedStonesDebounced();
       },
       onPolishChanged: (v) {
         setState(() => _polishRange = v);
-        _refreshDisplayedStones();
+        _refreshDisplayedStonesDebounced();
       },
       onFlChanged: (v) {
         setState(() => _flRange = v);
-        _refreshDisplayedStones();
+        _refreshDisplayedStonesDebounced();
       },
       onCertChanged: (v) {
         setState(() => _certRange = v);
-        _refreshDisplayedStones();
+        _refreshDisplayedStonesDebounced();
       },
       onSymChanged: (v) {
         setState(() => _symRange = v);
-        _refreshDisplayedStones();
+        _refreshDisplayedStonesDebounced();
       },
       onDepthChanged: (v) {
         setState(() => _depthRange = v);
-        _refreshDisplayedStones();
+        _refreshDisplayedStonesDebounced();
       },
       onTableChanged: (v) {
         setState(() => _tableRange = v);
-        _refreshDisplayedStones();
+        _refreshDisplayedStonesDebounced();
       },
       onFancyColorTap: (id, name) {
         setState(() {
           selectedFancyColorId = id;
           selectedFancyColor = name;
         });
-        _refreshDisplayedStones();
+        _refreshDisplayedStonesDebounced();
       },
       onFancyExpandToggle: () =>
           setState(() => isFancyExpanded = !isFancyExpanded),
       onSaturationChanged: (v) {
         setState(() => _saturationRange = v);
-        _refreshDisplayedStones();
+        _refreshDisplayedStonesDebounced();
       },
     );
 
@@ -898,9 +906,12 @@ class _GmssScreenState extends State<GmssScreen>
                     sliver: isGridView
                         ? SliverGrid(
                             gridDelegate:
-                                const SliverGridDelegateWithMaxCrossAxisExtent(
+                                SliverGridDelegateWithMaxCrossAxisExtent(
                                   maxCrossAxisExtent: 350,
-                                  childAspectRatio: 0.92,
+                                  childAspectRatio:
+                                      MediaQuery.of(context).size.width < 768
+                                      ? 0.75
+                                      : 0.92,
                                   crossAxisSpacing: 15,
                                   mainAxisSpacing: 15,
                                 ),
@@ -977,7 +988,6 @@ class _GmssScreenState extends State<GmssScreen>
       builder: (context, child) {
         double value = (_shimmerController.value * 3.0) - 1.0;
         return Container(
-          height: 350,
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(15),
@@ -999,12 +1009,13 @@ class _GmssScreenState extends State<GmssScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  height: 200,
-                  margin: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
                 ),
                 Padding(
@@ -1312,18 +1323,29 @@ class _GmssScreenState extends State<GmssScreen>
   }
 
   Widget _buildHeader() {
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isMobile = screenWidth < 768;
+
     return Padding(
-      padding: const EdgeInsets.only(top: 60, bottom: 10),
+      padding: EdgeInsets.only(
+        top: isMobile ? 30 : 60,
+        bottom: 10,
+        left: 20,
+        right: 20,
+      ),
       child: Column(
         children: [
           Text(
             "${selectedOrigin == 1 ? 'Lab Grown' : 'Natural'} $selectedShape Diamonds",
-            style: const TextStyle(
-              fontSize: 34,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: isMobile ? 26 : 34,
               fontWeight: FontWeight.w900,
-              color: Color(0xFF2D3142),
+              color: const Color(0xFF2D3142),
+              height: 1.2,
             ),
           ),
+          const SizedBox(height: 8),
           const Text(
             "HAND-SELECTED BRILLIANCE",
             style: TextStyle(
@@ -1582,31 +1604,36 @@ class _GmssScreenState extends State<GmssScreen>
     required bool isDesktop,
     required VoidCallback onFilterTap,
   }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 24),
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 16),
       child: Row(
         children: [
-          if (isDesktop)
-            const SizedBox(width: 96)
-          else
+          if (!isDesktop)
             IconButton(
               icon: const Icon(Icons.tune),
               onPressed: onFilterTap,
               tooltip: "Filters",
             ),
           Expanded(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _tabItem("Diamond", 0, mainCount, themeColor),
-                const SizedBox(width: 30),
-                _tabItem("Recently Viewed", 1, historyCount, themeColor),
-                const SizedBox(width: 30),
-                _tabItem("Compare", 2, compareCount, themeColor),
-              ],
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _tabItem("Diamond", 0, mainCount, themeColor),
+                    const SizedBox(width: 20),
+                    _tabItem("Recently Viewed", 1, historyCount, themeColor),
+                    const SizedBox(width: 20),
+                    _tabItem("Compare", 2, compareCount, themeColor),
+                  ],
+                ),
+              ),
             ),
           ),
-          if (_currentTab == 0)
+          if (_currentTab == 0 && isDesktop)
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -1625,9 +1652,7 @@ class _GmssScreenState extends State<GmssScreen>
                   onPressed: () => setState(() => isGridView = false),
                 ),
               ],
-            )
-          else
-            const SizedBox(width: 96),
+            ),
         ],
       ),
     );
