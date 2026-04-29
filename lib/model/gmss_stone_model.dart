@@ -79,9 +79,9 @@ class GmssStone {
     double len = 0.0, wid = 0.0, dep = 0.0;
     if (measurements.contains('*')) {
       List<String> parts = measurements.split('*');
-      if (parts.length >= 1) len = safeDouble(parts);
-      if (parts.length >= 2) wid = safeDouble(parts);
-      if (parts.length >= 3) dep = safeDouble(parts);
+      if (parts.isNotEmpty) len = safeDouble(parts[0]);
+      if (parts.length >= 2) wid = safeDouble(parts[1]);
+      if (parts.length >= 3) dep = safeDouble(parts[2]);
     }
     String growthType = json['growthType']?.toString().toUpperCase() ?? "";
     bool stoneIsLab = isLab;

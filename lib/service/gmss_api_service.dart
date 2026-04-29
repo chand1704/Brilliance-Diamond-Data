@@ -52,10 +52,18 @@ class GmssApiService {
         'page': '1',
         'per_page': '100000',
       };
-      if (shapeName != null &&
-          shapeName.toUpperCase() != "OTHER" &&
-          shapeName.toUpperCase() != "ALL") {
-        queryParams['shape'] = shapeName.toUpperCase();
+      if (shapeName != null && shapeName.toUpperCase() != "ALL") {
+        String upper = shapeName.toUpperCase().trim();
+        // Smart mapping for API compatibility
+        if (upper == "SQ RADIANT") {
+          queryParams['shape'] = "RADIANT";
+        } else if (upper == "SQ EMERALD") {
+          queryParams['shape'] = "EMERALD";
+        } else if (upper == "ROSE") {
+          queryParams['shape'] = "ROSE";
+        } else {
+          queryParams['shape'] = upper;
+        }
       }
       final uri = Uri.parse(baseUrl).replace(queryParameters: queryParams);
       debugPrint("API Request: $uri");

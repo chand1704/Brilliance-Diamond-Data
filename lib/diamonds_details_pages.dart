@@ -12,14 +12,17 @@ import 'package:url_launcher/url_launcher.dart';
 import 'DiamondDesign.dart';
 
 class DiamondDetailScreen extends StatefulWidget {
-  final GmssStone? stone;
   final String? stoneId;
+  final String? shape;
+  final GmssStone? stone;
   final bool isFavorite;
   final Function(bool) onFavoriteToggle;
+
   const DiamondDetailScreen({
     super.key,
-    this.stone,
     this.stoneId,
+    this.shape,
+    this.stone,
     required this.isFavorite,
     required this.onFavoriteToggle,
   });
@@ -105,14 +108,18 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
         debugPrint("Error parsing local stone data: $e");
       }
     }
-    if (widget.stone != null) {
+    if (widget.stoneId != null) {
       try {
-        final labStones = await GmssApiService.fetchLabGrownData();
-        final naturalStones = await GmssApiService.fetchNaturalData();
+        final labStones = await GmssApiService.fetchLabGrownData(
+          shapeName: widget.shape,
+        );
+        final naturalStones = await GmssApiService.fetchNaturalData(
+          shapeName: widget.shape,
+        );
         GmssStone foundStone = [
           ...labStones['stones'],
           ...naturalStones['stones'],
-        ].firstWhere((s) => s.id.toString() == widget.stoneId);
+        ].firstWhere((s) => s.stockNo == widget.stoneId);
         _updateUI(foundStone);
       } catch (e) {
         debugPrint("Stone not found in APIL $e");

@@ -22,11 +22,13 @@ class MyApp extends StatelessWidget {
         if (settings.name != null && settings.name!.startsWith('/details')) {
           final uri = Uri.parse(settings.name!);
           final stoneId = uri.queryParameters['id'];
+          final shape = uri.queryParameters['shape'];
           return PageRouteBuilder(
             settings: settings,
             transitionDuration: Duration.zero,
             pageBuilder: (_, __, ___) => DiamondDetailScreen(
               stoneId: stoneId,
+              shape: shape,
               stone: null,
               isFavorite: false,
               onFavoriteToggle: (val) {},

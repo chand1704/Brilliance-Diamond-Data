@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 import 'dart:html' as html;
 
@@ -426,20 +426,14 @@ class _GmssScreenState extends State<GmssScreen>
   }
 
   void _handleLoadMore() {
-    if (!_isMoreLoading && _hasMoreData) {
+    if (_hasMoreData) {
       setState(() {
-        _isMoreLoading = true;
-      });
-      Future.delayed(const Duration(milliseconds: 50), () {
-        if (!mounted) return;
-        setState(() {
-          _localVisibleCount += 5;
-          _displayedStones = _allFilteredStones
-              .take(_localVisibleCount)
-              .toList();
-          _hasMoreData = _localVisibleCount < _allFilteredStones.length;
-          _isMoreLoading = false;
-        });
+        _localVisibleCount += 24; // Increase chunk size for smoother scrolling
+        if (_localVisibleCount > _allFilteredStones.length) {
+          _localVisibleCount = _allFilteredStones.length;
+        }
+        _displayedStones = _allFilteredStones.take(_localVisibleCount).toList();
+        _hasMoreData = _localVisibleCount < _allFilteredStones.length;
       });
     }
   }
@@ -448,7 +442,7 @@ class _GmssScreenState extends State<GmssScreen>
   void _scrollListener() {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 1000) {
-      if (!_isMoreLoading && _hasMoreData && _currentTab == 0) {
+      if (_hasMoreData && _currentTab == 0) {
         _handleLoadMore();
       }
     }
@@ -489,25 +483,27 @@ class _GmssScreenState extends State<GmssScreen>
   }
 
   void _startGentlePrefetch() async {
-    final List<String> topShapes = [
-      'Princess',
-      'Emerald',
-      'Cushion',
-      'Radiant',
-      'Marquise',
-      'Pear',
-      'Oval',
-      'Heart',
-      'Asscher',
-    ];
-    for (String shapeName in topShapes) {
+    final List<String> allShapesToPrefetch = [];
+    for (var s in shapeCategories) {
+      if (s['name'] != 'Round' && s['name'] != 'Other') {
+        allShapesToPrefetch.add(s['name']);
+      }
+    }
+    for (var s in otherShapes) {
+      allShapesToPrefetch.add(s['name']);
+    }
+
+    for (String shapeName in allShapesToPrefetch) {
       if (!mounted) break;
       await Future.delayed(const Duration(seconds: 2));
       if (!mounted) break;
       try {
-        final shapeInfo = shapeCategories.firstWhere(
-          (s) => s['name'] == shapeName,
-        );
+        Map<String, dynamic>? shapeInfo;
+        try {
+          shapeInfo = shapeCategories.firstWhere((s) => s['name'] == shapeName);
+        } catch (e) {
+          shapeInfo = otherShapes.firstWhere((s) => s['name'] == shapeName);
+        }
         int shapeId = shapeInfo['id'];
         if (!_cachedLabGrownMap.containsKey(shapeId)) {
           final res = await GmssApiService.fetchLabGrownData(
@@ -517,6 +513,17 @@ class _GmssScreenState extends State<GmssScreen>
             _cachedLabGrownMap[shapeId] = {
               'stones': res['stones'],
               'total': res['total'],
+            };
+          }
+        }
+        if (!_cachedNaturalMap.containsKey(shapeId)) {
+          final resNatural = await GmssApiService.fetchNaturalData(
+            shapeName: shapeName,
+          );
+          if (mounted && resNatural['stones'] != null) {
+            _cachedNaturalMap[shapeId] = {
+              'stones': resNatural['stones'],
+              'total': resNatural['total'],
             };
           }
         }
@@ -574,171 +581,179 @@ class _GmssScreenState extends State<GmssScreen>
     );
     GmssStone.addToHistory(stone);
     _loadHistoryFromStorage();
-    Navigator.pushNamed(context, '/details', arguments: stone.id);
+    Navigator.pushNamed(
+      context,
+      '/details?id=${stone.stockNo}&shape=${stone.shapeStr}',
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isDesktop = screenWidth > 1200;
+
     final Color themeColor = (selectedOrigin == 1)
         ? Colors.teal
         : Colors.blue.shade700;
+
+    final Widget filtersWidget = SidebarFilters(
+      themeColor: themeColor,
+      selectedOrigin: selectedOrigin,
+      isFancySearch: isFancySearch,
+      caratRange: _caratRange,
+      priceRange: _priceRange,
+      colorRange: _colorRange,
+      clarityRange: _clarityRange,
+      showOnlyWithImages: showOnlyWithImages,
+      quickShipping: quickShipping,
+      showAdvancedFilters: showAdvancedFilters,
+      cutRange: _cutRange,
+      polishRange: _polishRange,
+      flRange: _flRange,
+      certRange: _certRange,
+      symRange: _symRange,
+      depthRange: _depthRange,
+      tableRange: _tableRange,
+      selectedFancyColorId: selectedFancyColorId,
+      isFancyExpanded: isFancyExpanded,
+      saturationRange: _saturationRange,
+      fancyColors: fancyColors,
+      saturationLabels: saturationLabels,
+      selectedShape: selectedShape,
+      shadeLabels: shadeLabels,
+      clarityLabels: clarityLabels,
+      cutLabels: cutLabels,
+      polishLabels: polishLabels,
+      flLabels: flLabels,
+      certLabels: certLabels,
+      symLabels: symLabels,
+      onOriginChanged: (val) {
+        if (selectedOrigin == val) return;
+        setState(() {
+          selectedOrigin = val;
+          _currentPage = 1;
+          bool isCached = (val == 1)
+              ? _cachedLabGrownMap.containsKey(selectedShapeId)
+              : _cachedNaturalMap.containsKey(selectedShapeId);
+          if (!isCached) {
+            _displayedStones = [];
+          }
+          _totalStonesFromApi = 0;
+          _hasMoreData = true;
+          _future = _getSmartData();
+        });
+      },
+      onCaratChanged: (v) {
+        setState(() => _caratRange = v);
+        _refreshDisplayedStones();
+      },
+      onPriceChanged: (v) {
+        setState(() => _priceRange = v);
+        _refreshDisplayedStones();
+      },
+      onColorChanged: (v) {
+        setState(() => _colorRange = v);
+        _refreshDisplayedStones();
+      },
+      onClarityChanged: (v) {
+        setState(() => _clarityRange = v);
+        _refreshDisplayedStones();
+      },
+      onImageToggle: (v) {
+        setState(() => showOnlyWithImages = v);
+        _refreshDisplayedStones();
+      },
+      onShippingToggle: (v) {
+        setState(() => quickShipping = v);
+        _refreshDisplayedStones();
+      },
+      onReset: () {
+        setState(() {
+          selectedShape = 'Round';
+          selectedShapeId = 1;
+          _caratRange = const RangeValues(0, 15);
+          _priceRange = const RangeValues(0, 100000);
+          _colorRange = const RangeValues(0, 8);
+          _clarityRange = const RangeValues(0, 8);
+          _cutRange = const RangeValues(0, 4);
+          _polishRange = const RangeValues(0, 3);
+          _flRange = const RangeValues(0, 3);
+          _certRange = const RangeValues(0, 2);
+          _symRange = const RangeValues(0, 3);
+          _depthRange = const RangeValues(0, 90);
+          _tableRange = const RangeValues(0, 90);
+          selectedFancyColor = null;
+          selectedFancyColorId = null;
+          isFancySearch = false;
+        });
+        _refreshDisplayedStones();
+      },
+      onAdvancedToggle: () =>
+          setState(() => showAdvancedFilters = !showAdvancedFilters),
+      onCutChanged: (v) {
+        setState(() => _cutRange = v);
+        _refreshDisplayedStones();
+      },
+      onPolishChanged: (v) {
+        setState(() => _polishRange = v);
+        _refreshDisplayedStones();
+      },
+      onFlChanged: (v) {
+        setState(() => _flRange = v);
+        _refreshDisplayedStones();
+      },
+      onCertChanged: (v) {
+        setState(() => _certRange = v);
+        _refreshDisplayedStones();
+      },
+      onSymChanged: (v) {
+        setState(() => _symRange = v);
+        _refreshDisplayedStones();
+      },
+      onDepthChanged: (v) {
+        setState(() => _depthRange = v);
+        _refreshDisplayedStones();
+      },
+      onTableChanged: (v) {
+        setState(() => _tableRange = v);
+        _refreshDisplayedStones();
+      },
+      onFancyColorTap: (id, name) {
+        setState(() {
+          selectedFancyColorId = id;
+          selectedFancyColor = name;
+        });
+        _refreshDisplayedStones();
+      },
+      onFancyExpandToggle: () => setState(() => isFancyExpanded = !isFancyExpanded),
+      onSaturationChanged: (v) {
+        setState(() => _saturationRange = v);
+        _refreshDisplayedStones();
+      },
+    );
+
     return Scaffold(
+      key: GlobalKey<ScaffoldState>(),
       backgroundColor: const Color(0xFFF8FAFB),
+      drawer: isDesktop
+          ? null
+          : Drawer(
+              width: 340,
+              child: SingleChildScrollView(child: filtersWidget),
+            ),
       body: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 340,
-            height: MediaQuery.of(context).size.height,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border(right: BorderSide(color: Colors.grey.shade100)),
-            ),
-            child: SingleChildScrollView(
-              child: SidebarFilters(
-                themeColor: themeColor,
-                selectedOrigin: selectedOrigin,
-                isFancySearch: isFancySearch,
-                caratRange: _caratRange,
-                priceRange: _priceRange,
-                colorRange: _colorRange,
-                clarityRange: _clarityRange,
-                showOnlyWithImages: showOnlyWithImages,
-                quickShipping: quickShipping,
-                showAdvancedFilters: showAdvancedFilters,
-                cutRange: _cutRange,
-                polishRange: _polishRange,
-                flRange: _flRange,
-                certRange: _certRange,
-                symRange: _symRange,
-                depthRange: _depthRange,
-                tableRange: _tableRange,
-                selectedFancyColorId: selectedFancyColorId,
-                isFancyExpanded: isFancyExpanded,
-                saturationRange: _saturationRange,
-                fancyColors: fancyColors,
-                saturationLabels: saturationLabels,
-                selectedShape: selectedShape,
-                shadeLabels: shadeLabels,
-                clarityLabels: clarityLabels,
-                cutLabels: cutLabels,
-                polishLabels: polishLabels,
-                flLabels: flLabels,
-                certLabels: certLabels,
-                symLabels: symLabels,
-                onOriginChanged: (val) {
-                  if (selectedOrigin == val) return;
-                  setState(() {
-                    selectedOrigin = val;
-                    _currentPage = 1;
-                    _displayedStones = [];
-                    _totalStonesFromApi = 0;
-                    _hasMoreData = true;
-                    _future = _getSmartData(isLoadMore: false);
-                  });
-                },
-                onCaratChanged: (val) {
-                  setState(() => _caratRange = val);
-                  _localVisibleCount = 6;
-                  _refreshDisplayedStones();
-                },
-                onPriceChanged: (val) {
-                  setState(() => _priceRange = val);
-                  _localVisibleCount = 6;
-                  _refreshDisplayedStones();
-                },
-                onColorChanged: (val) {
-                  setState(() => _colorRange = val);
-                  _localVisibleCount = 6;
-                  _refreshDisplayedStones();
-                },
-                onClarityChanged: (val) {
-                  setState(() => _clarityRange = val);
-                  _localVisibleCount = 6;
-                  _refreshDisplayedStones();
-                },
-                onImageToggle: (val) {
-                  setState(() => showOnlyWithImages = val);
-                  _localVisibleCount = 6;
-                  _refreshDisplayedStones();
-                },
-                onShippingToggle: (val) {
-                  setState(() => quickShipping = val);
-                  _localVisibleCount = 6;
-                  _refreshDisplayedStones();
-                },
-                onAdvancedToggle: () =>
-                    setState(() => showAdvancedFilters = !showAdvancedFilters),
-                onCutChanged: (val) {
-                  setState(() => _cutRange = val);
-                  _localVisibleCount = 6;
-                  _refreshDisplayedStones();
-                },
-                onPolishChanged: (val) {
-                  setState(() => _polishRange = val);
-                  _localVisibleCount = 6;
-                  _refreshDisplayedStones();
-                },
-                onFlChanged: (val) {
-                  setState(() => _flRange = val);
-                  _localVisibleCount = 6;
-                  _refreshDisplayedStones();
-                },
-                onCertChanged: (val) {
-                  setState(() => _certRange = val);
-                  _localVisibleCount = 6;
-                  _refreshDisplayedStones();
-                },
-                onSymChanged: (val) {
-                  setState(() => _symRange = val);
-                  _localVisibleCount = 6;
-                  _refreshDisplayedStones();
-                },
-                onDepthChanged: (val) {
-                  setState(() => _depthRange = val);
-                  _localVisibleCount = 6;
-                  _refreshDisplayedStones();
-                },
-                onTableChanged: (val) {
-                  setState(() => _tableRange = val);
-                  _localVisibleCount = 6;
-                  _refreshDisplayedStones();
-                },
-                onFancyColorTap: (id, name) {
-                  setState(() {
-                    selectedFancyColorId = id;
-                    selectedFancyColor = name;
-                    _localVisibleCount = 6;
-                  });
-                  _refreshDisplayedStones();
-                },
-                onFancyExpandToggle: () =>
-                    setState(() => isFancyExpanded = !isFancyExpanded),
-                onSaturationChanged: (val) {
-                  setState(() => _saturationRange = val);
-                  _localVisibleCount = 6;
-                  _refreshDisplayedStones();
-                },
-                onReset: () {
-                  setState(() {
-                    showOnlyWithImages = false;
-                    quickShipping = false;
-                    _caratRange = const RangeValues(0.0, 15.0);
-                    _priceRange = const RangeValues(0.0, 100000.0);
-                    selectedOrigin = 1;
-                    _colorRange = const RangeValues(0, 8);
-                    selectedShape = 'Round';
-                    selectedShapeId = 1;
-                    selectedFancyColorId = null;
-                    selectedFancyColor = null;
-                    isFancySearch = false;
-                    _localVisibleCount = 6;
-                    _future = _getSmartData();
-                  });
-                },
+          if (isDesktop)
+            Container(
+              width: 340,
+              height: MediaQuery.of(context).size.height,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border(right: BorderSide(color: Colors.grey.shade100)),
               ),
+              child: SingleChildScrollView(child: filtersWidget),
             ),
-          ),
           Expanded(
             child: CustomScrollView(
               controller: _scrollController,
@@ -755,7 +770,12 @@ class _GmssScreenState extends State<GmssScreen>
                         isFancySearch = false;
                         selectedOrigin = 2;
                         _currentPage = 1;
-                        _displayedStones = [];
+                        bool isCached = _cachedNaturalMap.containsKey(
+                          selectedShapeId,
+                        );
+                        if (!isCached) {
+                          _displayedStones = [];
+                        }
                         _totalStonesFromApi = 0;
                         _future = _getSmartData(isLoadMore: false);
                       });
@@ -821,6 +841,8 @@ class _GmssScreenState extends State<GmssScreen>
                     historyCount: _recentlyViewed.length,
                     compareCount: _filteredCompareCount,
                     themeColor: themeColor,
+                    isDesktop: isDesktop,
+                    onFilterTap: () => Scaffold.of(context).openDrawer(),
                   ),
                 ),
                 if ((_isFiltering && _displayedStones.isEmpty) ||
@@ -857,11 +879,11 @@ class _GmssScreenState extends State<GmssScreen>
                         ? SliverGrid(
                             gridDelegate:
                                 const SliverGridDelegateWithMaxCrossAxisExtent(
-                                  maxCrossAxisExtent: 300,
-                                  childAspectRatio: 0.92,
-                                  crossAxisSpacing: 15,
-                                  mainAxisSpacing: 15,
-                                ),
+                                   maxCrossAxisExtent: 350,
+                                   childAspectRatio: 0.92,
+                                   crossAxisSpacing: 15,
+                                   mainAxisSpacing: 15,
+                                 ),
                             delegate: SliverChildBuilderDelegate(
                               (context, index) {
                                 final List<GmssStone> stones = _currentTab == 0
@@ -919,16 +941,7 @@ class _GmssScreenState extends State<GmssScreen>
                             ),
                           ),
                   ),
-                SliverToBoxAdapter(
-                  child: (_currentTab != 0 || !_hasMoreData || !_isMoreLoading)
-                      ? const SizedBox.shrink()
-                      : const Center(
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(vertical: 20),
-                            child: CircularProgressIndicator(),
-                          ),
-                        ),
-                ),
+                SliverToBoxAdapter(child: const SizedBox.shrink()),
                 const SliverToBoxAdapter(child: SizedBox(height: 100)),
               ],
             ),
@@ -1327,10 +1340,17 @@ class _GmssScreenState extends State<GmssScreen>
                 _showOtherShapesPopup();
               } else {
                 setState(() {
-                  selectedShapeId = s['id'];
+                  int newShapeId = s['id'];
+                  bool isCached = (selectedOrigin == 1)
+                      ? _cachedLabGrownMap.containsKey(newShapeId)
+                      : _cachedNaturalMap.containsKey(newShapeId);
+
+                  selectedShapeId = newShapeId;
                   selectedShape = s['name'];
                   _currentPage = 1;
-                  _displayedStones = [];
+                  if (!isCached) {
+                    _displayedStones = [];
+                  }
                   _totalStonesFromApi = 0;
                   _hasMoreData = true;
                   _future = _getSmartData();
@@ -1473,10 +1493,17 @@ class _GmssScreenState extends State<GmssScreen>
     return InkWell(
       onTap: () {
         setState(() {
-          selectedShapeId = shape['id'];
+          int newShapeId = shape['id'];
+          bool isCached = (selectedOrigin == 1)
+              ? _cachedLabGrownMap.containsKey(newShapeId)
+              : _cachedNaturalMap.containsKey(newShapeId);
+
+          selectedShapeId = newShapeId;
           selectedShape = shape['name'];
           _currentPage = 1;
-          _displayedStones = [];
+          if (!isCached) {
+            _displayedStones = [];
+          }
           _totalStonesFromApi = 0;
           _hasMoreData = true;
           _future = _getSmartData();
@@ -1531,12 +1558,21 @@ class _GmssScreenState extends State<GmssScreen>
     required int historyCount,
     required int compareCount,
     required Color themeColor,
+    required bool isDesktop,
+    required VoidCallback onFilterTap,
   }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 24),
       child: Row(
         children: [
-          const SizedBox(width: 96),
+          if (isDesktop)
+            const SizedBox(width: 96)
+          else
+            IconButton(
+              icon: const Icon(Icons.tune),
+              onPressed: onFilterTap,
+              tooltip: "Filters",
+            ),
           Expanded(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
