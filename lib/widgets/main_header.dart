@@ -100,13 +100,18 @@ class _MainHeaderState extends State<MainHeader> {
           if (isMobile) const SizedBox(width: 10),
           if (isMobile)
             Expanded(
-              child: Text(
-                "BRILLIANCE",
-                style: TextStyle(
-                  fontWeight: FontWeight.w900,
-                  fontSize: 22,
-                  letterSpacing: 2,
-                  color: widget.themeColor,
+              child: Image.network(
+                "https://www.brilliance.com/sites/default/files/logo_0.png",
+                height: 22,
+                alignment: Alignment.centerLeft,
+                errorBuilder: (context, error, stackTrace) => Text(
+                  "BRILLIANCE",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    fontSize: 22,
+                    letterSpacing: 2,
+                    color: widget.themeColor,
+                  ),
                 ),
               ),
             ),
