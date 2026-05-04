@@ -50,7 +50,7 @@ class GmssApiService {
       final Map<String, String> queryParams = {
         'auth_key': authKey,
         'page': page.toString(),
-        'per_page': '100000',
+        'per_page': isLab ? '100000' : '20000',
       };
       if (shapeName != null && shapeName.toUpperCase() != "ALL") {
         String upper = shapeName.toUpperCase().trim();

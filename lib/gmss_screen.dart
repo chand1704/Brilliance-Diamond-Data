@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 import 'dart:html' as html;
 
@@ -241,6 +241,7 @@ class _GmssScreenState extends State<GmssScreen>
     );
 
     if (!targetCache.containsKey(shapeId)) {
+      setState(() => _isFiltering = true);
       final Map<String, dynamic> responseMap = (selectedOrigin == 1)
           ? await GmssApiService.fetchLabGrownData(shapeName: selectedShape)
           : await GmssApiService.fetchNaturalData(shapeName: selectedShape);
@@ -255,7 +256,7 @@ class _GmssScreenState extends State<GmssScreen>
 
   void _refreshDisplayedStonesDebounced() {
     _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 3), () {
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
       _refreshDisplayedStones();
     });
   }
@@ -572,13 +573,19 @@ class _GmssScreenState extends State<GmssScreen>
   @override
   void initState() {
     super.initState();
+    _loadHistory();
+    _getSmartData();
     _scrollController.addListener(_scrollListener);
     _shimmerController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1400),
     )..repeat();
     _future = _getSmartData();
-    // Delay prefetch to prioritize initial round data loading
+    
+    // Immediate pre-fetch of Natural data for current shape
+    _preFetchCurrentShapeNatural();
+    
+    // Gentle pre-fetch for all other shapes after 5 seconds
     Future.delayed(const Duration(seconds: 5), () {
       if (mounted) _startGentlePrefetch();
     });
@@ -594,6 +601,28 @@ class _GmssScreenState extends State<GmssScreen>
         }
       }
     });
+  }
+
+  Future<void> _preFetchCurrentShapeNatural() async {
+    try {
+      // Small delay to prioritize Lab load
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (!mounted) return;
+      int shapeId = selectedShapeId;
+      if (!_cachedNaturalMap.containsKey(shapeId)) {
+        debugPrint("--- Background Pre-fetching Natural Data for $selectedShape ---");
+        final responseMap = await GmssApiService.fetchNaturalData(shapeName: selectedShape);
+        if (mounted) {
+          _cachedNaturalMap[shapeId] = {
+            'stones': responseMap['stones'],
+            'total': responseMap['total'],
+          };
+          debugPrint("--- Background Pre-fetch Complete: ${responseMap['total']} Natural stones ---");
+        }
+      }
+    } catch (e) {
+      debugPrint("Pre-fetch error: $e");
+    }
   }
 
   @override
@@ -1134,12 +1163,105 @@ class _GmssScreenState extends State<GmssScreen>
   }
 
   Widget _buildDiamondRow(GmssStone stone, Color themeColor) {
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final bool isMobile = screenWidth < 768;
     bool isFavorite = _savedStones.any((s) => s.id == stone.id);
     bool isCompareTab = _currentTab == 2;
     bool isExpanded = _expandedStoneStockNos.contains(stone.stockNo);
     final Color rowThemeColor = stone.isLab
         ? Colors.teal
         : Colors.blue.shade700;
+
+    if (isMobile) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 1),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: Colors.grey.shade100)),
+          color: Colors.white,
+        ),
+        child: InkWell(
+          onTap: () => isCompareTab ? null : _handleCardTap(stone),
+          child: Padding(
+            padding: const EdgeInsets.all(15),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    InkWell(
+                      onTap: () => _toggleSave(stone),
+                      child: Icon(
+                        isFavorite ? Icons.favorite : Icons.favorite_border,
+                        color: isFavorite
+                            ? rowThemeColor
+                            : Colors.grey.shade400,
+                        size: 18,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CustomPaint(
+                        painter: DiamondPainterUtils.getPainterForShapeName(
+                          stone.shapeStr,
+                          false,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        "${stone.weight.toStringAsFixed(2)} CT ${stone.shapeStr.toUpperCase()}",
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Text(
+                      "\$${stone.total_price.toStringAsFixed(2)}",
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 14,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "${stone.cut.isNotEmpty ? stone.cut.substring(0, 1) : '-'} • ${stone.colorStr} • ${stone.clarityStr} • ${stone.lab}",
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () => _handleCardTap(stone),
+                      child: Text(
+                        "Details",
+                        style: TextStyle(
+                          color: rowThemeColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          decoration: TextDecoration.underline,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Container(
       margin: const EdgeInsets.only(bottom: 1),
       decoration: BoxDecoration(
@@ -1194,12 +1316,15 @@ class _GmssScreenState extends State<GmssScreen>
                           ),
                         ),
                         const SizedBox(width: 12),
-                        Text(
-                          stone.shapeStr.toUpperCase(),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w500,
-                            fontSize: 14,
-                            color: Color(0xFF2D3142),
+                        Expanded(
+                          child: Text(
+                            stone.shapeStr.toUpperCase(),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w500,
+                              fontSize: 14,
+                              color: Color(0xFF2D3142),
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -1210,6 +1335,7 @@ class _GmssScreenState extends State<GmssScreen>
                     child: Text(
                       stone.weight.toStringAsFixed(2),
                       style: const TextStyle(fontSize: 14),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   Expanded(
@@ -1219,6 +1345,7 @@ class _GmssScreenState extends State<GmssScreen>
                           ? stone.cut.substring(0, 2).toUpperCase()
                           : (stone.cut.isEmpty ? "-" : stone.cut.toUpperCase()),
                       style: const TextStyle(fontSize: 14),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   Expanded(
@@ -1226,6 +1353,7 @@ class _GmssScreenState extends State<GmssScreen>
                     child: Text(
                       stone.colorStr,
                       style: const TextStyle(fontSize: 14),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   Expanded(
@@ -1233,6 +1361,7 @@ class _GmssScreenState extends State<GmssScreen>
                     child: Text(
                       stone.clarityStr,
                       style: const TextStyle(fontSize: 14),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   Expanded(
@@ -1240,6 +1369,7 @@ class _GmssScreenState extends State<GmssScreen>
                     child: Text(
                       stone.lab,
                       style: const TextStyle(fontWeight: FontWeight.bold),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   Expanded(
@@ -1247,6 +1377,7 @@ class _GmssScreenState extends State<GmssScreen>
                     child: Text(
                       "\$${stone.total_price.toStringAsFixed(2)}",
                       style: const TextStyle(fontWeight: FontWeight.w900),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   Expanded(
@@ -1262,6 +1393,7 @@ class _GmssScreenState extends State<GmssScreen>
                           decoration: TextDecoration.underline,
                           fontSize: 12,
                         ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ),

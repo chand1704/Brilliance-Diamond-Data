@@ -310,6 +310,35 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
     const Color headerTheme = Color(0xFF005AAB);
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: isMobile
+          ? AppBar(
+              backgroundColor: Colors.white,
+              elevation: 0,
+              centerTitle: true,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87, size: 20),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              title: Image.network(
+                "https://www.brilliance.com/sites/default/files/logo_0.png",
+                height: 25,
+                errorBuilder: (context, error, stackTrace) => const Text(
+                  "Brilliance",
+                  style: TextStyle(
+                    color: headerTheme,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                  ),
+                ),
+              ),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.share_outlined, color: Colors.black87, size: 20),
+                  onPressed: () {},
+                ),
+              ],
+            )
+          : null,
       body: Column(
         children: [
           if (!isMobile)

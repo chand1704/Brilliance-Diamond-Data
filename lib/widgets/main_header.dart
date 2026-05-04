@@ -82,7 +82,7 @@ class _MainHeaderState extends State<MainHeader> {
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: isMobile ? 15 : 40,
-        vertical: 15,
+        vertical: isMobile ? 10 : 15,
       ),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -90,59 +90,80 @@ class _MainHeaderState extends State<MainHeader> {
       ),
       child: Row(
         children: [
-          if (!isMobile) const Spacer(),
-          Expanded(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _hoverNavLink(
-                    "Diamonds",
-                    _diamondHoverController,
-                    _buildMegaMenu(),
+          if (isMobile)
+            IconButton(
+              icon: const Icon(Icons.menu, color: Colors.black87),
+              onPressed: () {
+                Scaffold.of(context).openDrawer();
+              },
+            ),
+          if (isMobile) const SizedBox(width: 10),
+          if (isMobile)
+            Expanded(
+              child: Image.network(
+                "https://www.brilliance.com/sites/default/files/logo_0.png",
+                height: 22,
+                alignment: Alignment.centerLeft,
+                errorBuilder: (context, error, stackTrace) => Text(
+                  "Brilliance",
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 18,
+                    color: widget.themeColor,
                   ),
-                  _hoverNavLink(
-                    "Engagement",
-                    _engagementHoverController,
-                    _buildEngagementMenu(),
-                  ),
-                  _hoverNavLink(
-                    "Wedding",
-                    _weddingHoverController,
-                    _buildWeddingMenu(),
-                  ),
-                  _hoverNavLink(
-                    "Jewelry",
-                    _jewelryHoverController,
-                    _buildJewelryMenu(),
-                  ),
-                  _hoverNavLink(
-                    "About",
-                    _aboutHoverController,
-                    _buildAboutMenu(),
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
-          if (!isMobile) const Spacer(),
+          if (!isMobile) ...[
+            const Spacer(),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _hoverNavLink(
+                  "Diamonds",
+                  _diamondHoverController,
+                  _buildMegaMenu(),
+                ),
+                _hoverNavLink(
+                  "Engagement",
+                  _engagementHoverController,
+                  _buildEngagementMenu(),
+                ),
+                _hoverNavLink(
+                  "Wedding",
+                  _weddingHoverController,
+                  _buildWeddingMenu(),
+                ),
+                _hoverNavLink(
+                  "Jewelry",
+                  _jewelryHoverController,
+                  _buildJewelryMenu(),
+                ),
+                _hoverNavLink(
+                  "About",
+                  _aboutHoverController,
+                  _buildAboutMenu(),
+                ),
+              ],
+            ),
+            const Spacer(),
+          ],
           IconButton(
-            icon: const Icon(Icons.search, size: 20),
+            icon: const Icon(Icons.search, size: 22),
             onPressed: () {},
           ),
           if (!isMobile) ...[
             IconButton(
-              icon: const Icon(Icons.favorite_border, size: 20),
+              icon: const Icon(Icons.favorite_border, size: 22),
               onPressed: () {},
             ),
             IconButton(
-              icon: const Icon(Icons.person_outline, size: 20),
+              icon: const Icon(Icons.person_outline, size: 22),
               onPressed: () {},
             ),
           ],
           IconButton(
-            icon: const Icon(Icons.shopping_bag_outlined, size: 20),
+            icon: const Icon(Icons.shopping_bag_outlined, size: 22),
             onPressed: () {},
           ),
         ],
