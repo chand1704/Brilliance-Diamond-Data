@@ -150,8 +150,8 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
         final iframe = html.IFrameElement()
           ..src = stone.video_link
           ..style.border = 'none'
-          ..width = '100%'
-          ..height = '100%'
+          ..style.width = '100%'
+          ..style.height = '100%'
           ..setAttribute('allowfullscreen', 'true');
 
         iframe.onLoad.listen((_) {
@@ -594,8 +594,15 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
     final Color originThemeColor = _currentStone!.isLab
         ? Colors.teal
         : Colors.blue.shade700;
+
+    double screenWidth = MediaQuery.of(context).size.width;
+    bool isMobile = screenWidth < 900;
+
+    double cardHeight = isMobile ? 600 : 500;
+    double imageSize = isMobile ? 550 : 450;
+
     return Container(
-      height: 500,
+      height: cardHeight,
       width: double.infinity,
       decoration: BoxDecoration(
         color: const Color(0xFFF9F9F9),
@@ -606,7 +613,7 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
           Center(
             child: SafeImage(
               url: _currentStone!.image_link,
-              size: 450,
+              size: imageSize,
               stone: _currentStone!,
             ),
           ),
