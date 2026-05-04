@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:convert';
 import 'dart:html' as html;
 
@@ -31,8 +31,8 @@ class _GmssScreenState extends State<GmssScreen>
   int _totalStonesFromApi = 0;
   final Set<String> _expandedStoneStockNos = {};
   late AnimationController _shimmerController;
-  final Map<int, Map<String, dynamic>> _cachedLabGrownMap = {};
-  final Map<int, Map<String, dynamic>> _cachedNaturalMap = {};
+  static final Map<int, Map<String, dynamic>> _cachedLabGrownMap = {};
+  static final Map<int, Map<String, dynamic>> _cachedNaturalMap = {};
   int? selectedFancyColorId;
   double selectedSaturation = 0;
   RangeValues _saturationRange = const RangeValues(0, 5);
@@ -573,7 +573,6 @@ class _GmssScreenState extends State<GmssScreen>
   @override
   void initState() {
     super.initState();
-    _getSmartData();
     _scrollController.addListener(_scrollListener);
     _shimmerController = AnimationController(
       vsync: this,
