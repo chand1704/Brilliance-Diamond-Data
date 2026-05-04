@@ -914,7 +914,8 @@ class _GmssScreenState extends State<GmssScreen>
           Expanded(
             child: CustomScrollView(
               controller: _scrollController,
-              cacheExtent: 5000, // Very large buffer for seamless scrolling
+              cacheExtent:
+                  2000, // Balanced buffer for performance and smoothness
               physics: const BouncingScrollPhysics(),
               slivers: [
                 SliverToBoxAdapter(
@@ -1002,8 +1003,8 @@ class _GmssScreenState extends State<GmssScreen>
                     onFilterTap: () => _scaffoldKey.currentState?.openDrawer(),
                   ),
                 ),
-                if ((_isFiltering && _displayedStones.isEmpty) ||
-                    (_displayedStones.isEmpty && _currentPage == 1))
+                if ((_isFiltering && _allFilteredStones.isEmpty) ||
+                    (_allFilteredStones.isEmpty && _currentPage == 1))
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 24,
@@ -1024,7 +1025,7 @@ class _GmssScreenState extends State<GmssScreen>
                     ),
                   ),
                 if (!_isFiltering &&
-                    (_displayedStones.isNotEmpty || _currentPage > 1))
+                    (_allFilteredStones.isNotEmpty || _currentPage > 1))
                   SliverPadding(
                     key: ValueKey("page-$selectedShapeId-$_currentTab"),
                     padding: const EdgeInsets.only(
@@ -1069,6 +1070,8 @@ class _GmssScreenState extends State<GmssScreen>
                                   : (_currentTab == 1
                                         ? _recentlyViewed.length
                                         : _savedStones.length),
+                              addAutomaticKeepAlives: false,
+                              addRepaintBoundaries: false,
                             ),
                           )
                         : SliverList(
@@ -1088,6 +1091,8 @@ class _GmssScreenState extends State<GmssScreen>
                                   : (_currentTab == 1
                                         ? _recentlyViewed.length
                                         : _savedStones.length),
+                              addAutomaticKeepAlives: false,
+                              addRepaintBoundaries: false,
                             ),
                           ),
                   ),

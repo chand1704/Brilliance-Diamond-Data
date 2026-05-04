@@ -22,26 +22,70 @@ class SafeImage extends StatelessWidget {
       return _buildShapePlaceholder();
     }
 
-    return Image.network(
-      optimizedUrl,
-      fit: BoxFit.contain,
-      cacheWidth: 300,
-      cacheHeight: 300,
-      filterQuality: FilterQuality.low,
-      errorBuilder: (context, error, stackTrace) {
-        return _buildShapePlaceholder();
-      },
-      loadingBuilder: (context, child, loadingProgress) {
-        if (loadingProgress == null) return child;
-        return _buildShapePlaceholder(); // Use static placeholder instead of animated loader
-      },
+    return Container(
+      color: Colors.grey.shade50, // Subtle background to prevent blank white look
+      child: Image.network(
+        optimizedUrl,
+        fit: BoxFit.contain,
+        cacheWidth: 300,
+        cacheHeight: 300,
+        frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+          if (wasSynchronouslyLoaded) return child;
+          return AnimatedOpacity(
+            opacity: frame == null ? 0 : 1,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeOut,
+            child: child,
+          );
+        },
+        loadingBuilder: (context, child, loadingProgress) {
+          if (loadingProgress == null) return child;
+          return _buildLoadingPlaceholder();
+        },
+        errorBuilder: (context, error, stackTrace) => _buildShapePlaceholder(),
+      ),
+    );
+  }
+
+  Widget _buildLoadingPlaceholder() {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        // Shimmer-like background
+        TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0.0, end: 1.0),
+          duration: const Duration(seconds: 1),
+          curve: Curves.easeInOut,
+          builder: (context, value, child) {
+            return Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Colors.grey.shade50,
+                    Colors.grey.shade200,
+                    Colors.grey.shade50,
+                  ],
+                  stops: [
+                    0.0,
+                    value,
+                    1.0,
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+        _buildShapePlaceholder(),
+      ],
     );
   }
 
   Widget _buildShapePlaceholder() {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(12.0),
+      child: Opacity(
+        opacity: 0.5,
         child: CustomPaint(
           size: Size(size * 0.7, size * 0.7),
           painter: _getShapePainter(stone),
