@@ -91,44 +91,41 @@ class DiamondCardState extends State<DiamondCard> {
                     ],
                   ),
                 ),
-                Flexible(
-                  flex: 1,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Text(
-                          "${widget.stone.weight} CARAT ${widget.stone.shapeStr.toUpperCase()}",
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 13,
-                          ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        "${widget.stone.weight} CARAT ${widget.stone.shapeStr.toUpperCase()}",
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 13,
                         ),
-                        const SizedBox(height: 2),
-                        Text(
-                          "${widget.stone.displayColor} • ${widget.stone.clarityStr} • ${widget.stone.lab}",
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 10,
-                          ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        "${widget.stone.displayColor} • ${widget.stone.clarityStr} • ${widget.stone.lab}",
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 10,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          "\$${widget.stone.total_price.toStringAsFixed(2)}",
-                          style: TextStyle(
-                            fontWeight: FontWeight.w900,
-                            fontSize: 14,
-                            color: Colors.black87,
-                          ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "\$${widget.stone.total_price.toStringAsFixed(2)}",
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 14,
+                          color: Colors.black87,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ],

@@ -255,7 +255,7 @@ class _GmssScreenState extends State<GmssScreen>
 
   void _refreshDisplayedStonesDebounced() {
     _debounceTimer?.cancel();
-    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+    _debounceTimer = Timer(const Duration(milliseconds: 3), () {
       _refreshDisplayedStones();
     });
   }
@@ -308,6 +308,7 @@ class _GmssScreenState extends State<GmssScreen>
           'polishLabels': polishLabels,
           'symLabels': symLabels,
           'flLabels': flLabels,
+          'certLabels': certLabels,
         },
       });
       if (!mounted) return;
@@ -369,6 +370,7 @@ class _GmssScreenState extends State<GmssScreen>
     return allStones.where((stone) {
       // 1. Origin
       if ((origin == 1) != stone.isLab) return false;
+
       // 2. Shape
       final String stoneShape = stone.shapeStr.toUpperCase().trim();
       if (searchShapeUpper == "ALL") {
@@ -376,28 +378,76 @@ class _GmssScreenState extends State<GmssScreen>
       } else if (searchShapeUpper == "OTHER") {
         if (stoneShape.contains("ROUND") ||
             stoneShape == "R" ||
-            stoneShape == "RB")
+            stoneShape == "RD" ||
+            stoneShape == "RB" ||
+            stoneShape == "BR")
           return false;
       } else if (searchShapeUpper == "ROUND") {
         if (!(stoneShape.contains("ROUND") ||
             stoneShape == "R" ||
+            stoneShape == "RD" ||
             stoneShape == "RB" ||
+            stoneShape == "BR" ||
             stoneShape == "RBC"))
+          return false;
+      } else if (searchShapeUpper == "PRINCESS") {
+        if (!(stoneShape.contains("PRINCESS") ||
+            stoneShape == "PR" ||
+            stoneShape == "PC"))
+          return false;
+      } else if (searchShapeUpper == "EMERALD") {
+        if (!(stoneShape.contains("EMERALD") ||
+            stoneShape == "EM" ||
+            stoneShape == "EC"))
+          return false;
+      } else if (searchShapeUpper == "CUSHION") {
+        if (!(stoneShape.contains("CUSHION") ||
+            stoneShape == "CU" ||
+            stoneShape == "CUS"))
+          return false;
+      } else if (searchShapeUpper == "RADIANT") {
+        if (!(stoneShape.contains("RADIANT") ||
+            stoneShape == "RA" ||
+            stoneShape == "RAD"))
+          return false;
+      } else if (searchShapeUpper == "OVAL") {
+        if (!(stoneShape.contains("OVAL") || stoneShape == "OV")) return false;
+      } else if (searchShapeUpper == "PEAR") {
+        if (!(stoneShape.contains("PEAR") ||
+            stoneShape == "PS" ||
+            stoneShape == "PE"))
+          return false;
+      } else if (searchShapeUpper == "MARQUISE") {
+        if (!(stoneShape.contains("MARQUISE") || stoneShape == "MQ"))
+          return false;
+      } else if (searchShapeUpper == "HEART") {
+        if (!(stoneShape.contains("HEART") || stoneShape == "HT")) return false;
+      } else if (searchShapeUpper == "ASSCHER") {
+        if (!(stoneShape.contains("ASSCHER") || stoneShape == "AS"))
           return false;
       } else if (!stoneShape.contains(searchShapeUpper)) {
         return false;
       }
-      // 3. Basic Ranges
+
+      // 3. Basic Ranges (Carat & Price)
       if (stone.weight < caratStart || stone.weight > caratEnd) return false;
-      if (stone.total_price < priceStart || stone.total_price > priceEnd)
+      if (stone.total_price < priceStart || stone.total_price > priceEnd) {
         return false;
-      // 4. Color Range
-      final List<String> shadeLabels = List<String>.from(p['shadeLabels']);
-      int colorIdx = shadeLabels.indexOf(stone.colorStr.trim().toUpperCase());
-      if (colorIdx != -1) {
-        if (colorIdx < p['colorRangeStart'] || colorIdx > p['colorRangeEnd'])
-          return false;
       }
+
+      // 4. Color Range (Natural Search)
+      final bool isFancySearch = p['isFancySearch'] ?? false;
+      if (!isFancySearch) {
+        final List<String> shadeLabels = List<String>.from(p['shadeLabels']);
+        int colorIdx = shadeLabels.indexOf(stone.colorStr.trim().toUpperCase());
+        if (colorIdx != -1) {
+          if (colorIdx < p['colorRangeStart'] ||
+              colorIdx > p['colorRangeEnd']) {
+            return false;
+          }
+        }
+      }
+
       // 5. Clarity Range
       final List<String> clarityLabels = List<String>.from(p['clarityLabels']);
       int clarityIdx = clarityLabels.indexOf(
@@ -405,10 +455,13 @@ class _GmssScreenState extends State<GmssScreen>
       );
       if (clarityIdx != -1) {
         if (clarityIdx < p['clarityRangeStart'] ||
-            clarityIdx > p['clarityRangeEnd'])
+            clarityIdx > p['clarityRangeEnd']) {
           return false;
+        }
       }
-      // 6. Cut/Polish/Sym/Fl
+
+      // 6. Advanced Filters (Cut, Polish, Sym, Fl)
+      // Cut
       String cutCode = stone.cut_code.trim().toUpperCase();
       int cutIdx =
           cutMapping[cutCode] ??
@@ -416,18 +469,61 @@ class _GmssScreenState extends State<GmssScreen>
             p['cutLabels'],
           ).indexOf(stone.cut.trim().toUpperCase());
       if (cutIdx != -1 &&
-          (cutIdx < p['cutRangeStart'] || cutIdx > p['cutRangeEnd']))
+          (cutIdx < p['cutRangeStart'] || cutIdx > p['cutRangeEnd'])) {
         return false;
+      }
+
+      // Polish
       String pCode = stone.polish.trim().toUpperCase();
       int polishIdx =
           polishMapping[pCode] ??
           List<String>.from(p['polishLabels']).indexOf(pCode);
       if (polishIdx != -1 &&
           (polishIdx < p['polishRangeStart'] ||
-              polishIdx > p['polishRangeEnd']))
+              polishIdx > p['polishRangeEnd'])) {
         return false;
-      // 7. Fancy Color Logic
-      final bool isFancySearch = p['isFancySearch'] ?? false;
+      }
+
+      // Symmetry
+      String sCode = stone.symmetry.trim().toUpperCase();
+      int symIdx =
+          symMapping[sCode] ?? List<String>.from(p['symLabels']).indexOf(sCode);
+      if (symIdx != -1 &&
+          (symIdx < p['symRangeStart'] || symIdx > p['symRangeEnd'])) {
+        return false;
+      }
+
+      // Fluorescence
+      String fCode = stone.fl_intensity.trim().toUpperCase();
+      int flIdx =
+          flMapping[fCode] ?? List<String>.from(p['flLabels']).indexOf(fCode);
+      if (flIdx != -1 &&
+          (flIdx < p['flRangeStart'] || flIdx > p['flRangeEnd'])) {
+        return false;
+      }
+
+      // 7. Lab / Certification
+      String stoneLab = stone.lab.trim().toUpperCase();
+      final List<String> certLabels = List<String>.from(p['certLabels'] ?? []);
+      int certIdx = certLabels.indexOf(stoneLab);
+      if (certIdx != -1) {
+        if (certIdx < (p['certRangeStart'] ?? 0) ||
+            certIdx > (p['certRangeEnd'] ?? 2)) {
+          return false;
+        }
+      }
+
+      // 8. Physical Dimensions (Depth & Table)
+      if (stone.depth < p['depthRangeStart'] ||
+          stone.depth > p['depthRangeEnd']) {
+        return false;
+      }
+      if (stone.table < p['tableRangeStart'] ||
+          stone.table > p['tableRangeEnd']) {
+        return false;
+      }
+
+      // 9. Fancy Color Logic
       bool isStoneFancy =
           stone.colorStr.toLowerCase().contains("fancy") ||
           stone.fancy_color.isNotEmpty;
@@ -445,6 +541,7 @@ class _GmssScreenState extends State<GmssScreen>
       } else {
         if (isStoneFancy) return false;
       }
+
       return true;
     }).toList();
   }
