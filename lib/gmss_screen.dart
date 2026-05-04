@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 import 'dart:convert';
 import 'dart:html' as html;
 
@@ -573,7 +573,6 @@ class _GmssScreenState extends State<GmssScreen>
   @override
   void initState() {
     super.initState();
-    _loadHistory();
     _getSmartData();
     _scrollController.addListener(_scrollListener);
     _shimmerController = AnimationController(
@@ -581,10 +580,10 @@ class _GmssScreenState extends State<GmssScreen>
       duration: const Duration(milliseconds: 1400),
     )..repeat();
     _future = _getSmartData();
-    
+
     // Immediate pre-fetch of Natural data for current shape
     _preFetchCurrentShapeNatural();
-    
+
     // Gentle pre-fetch for all other shapes after 5 seconds
     Future.delayed(const Duration(seconds: 5), () {
       if (mounted) _startGentlePrefetch();
@@ -610,14 +609,20 @@ class _GmssScreenState extends State<GmssScreen>
       if (!mounted) return;
       int shapeId = selectedShapeId;
       if (!_cachedNaturalMap.containsKey(shapeId)) {
-        debugPrint("--- Background Pre-fetching Natural Data for $selectedShape ---");
-        final responseMap = await GmssApiService.fetchNaturalData(shapeName: selectedShape);
+        debugPrint(
+          "--- Background Pre-fetching Natural Data for $selectedShape ---",
+        );
+        final responseMap = await GmssApiService.fetchNaturalData(
+          shapeName: selectedShape,
+        );
         if (mounted) {
           _cachedNaturalMap[shapeId] = {
             'stones': responseMap['stones'],
             'total': responseMap['total'],
           };
-          debugPrint("--- Background Pre-fetch Complete: ${responseMap['total']} Natural stones ---");
+          debugPrint(
+            "--- Background Pre-fetch Complete: ${responseMap['total']} Natural stones ---",
+          );
         }
       }
     } catch (e) {
