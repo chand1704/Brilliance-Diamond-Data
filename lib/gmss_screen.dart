@@ -26,6 +26,7 @@ class _GmssScreenState extends State<GmssScreen>
   List<GmssStone> _displayedStones = [];
   List<GmssStone> _allFilteredStones = [];
   int _filteredCompareCount = 0;
+  final Set<String> _savedStockNos = {};
   bool _isFiltering = false;
   bool _hasMoreData = true;
   int _totalStonesFromApi = 0;
@@ -323,6 +324,8 @@ class _GmssScreenState extends State<GmssScreen>
         _allFilteredStones = filteredResults;
         _totalFilteredStonesCount = filteredResults.length;
         _totalStonesFromApi = totalFromApi;
+        _savedStockNos.clear();
+        _savedStockNos.addAll(_savedStones.map((s) => s.stockNo));
         _filteredCompareCount = _savedStones.length;
         _displayedStones = _allFilteredStones.take(_localVisibleCount).toList();
         _hasMoreData = _localVisibleCount < _allFilteredStones.length;
@@ -556,7 +559,7 @@ class _GmssScreenState extends State<GmssScreen>
   void _handleLoadMore() {
     if (_hasMoreData) {
       setState(() {
-        _localVisibleCount += 24; // Increase chunk size for smoother scrolling
+        _localVisibleCount += 12; // Smaller chunks for smoother UI pop-in
         if (_localVisibleCount > _allFilteredStones.length) {
           _localVisibleCount = _allFilteredStones.length;
         }
@@ -736,6 +739,8 @@ class _GmssScreenState extends State<GmssScreen>
       setState(() {
         _savedStones.clear();
         _savedStones.addAll(saved);
+        _savedStockNos.clear();
+        _savedStockNos.addAll(saved.map((s) => s.stockNo));
         _filteredCompareCount = saved.length;
       });
     }
@@ -925,8 +930,8 @@ class _GmssScreenState extends State<GmssScreen>
           Expanded(
             child: CustomScrollView(
               controller: _scrollController,
+              cacheExtent: 1500, // Pre-renders items to make scroll smoother
               physics: const BouncingScrollPhysics(),
-              cacheExtent: 1000,
               slivers: [
                 SliverToBoxAdapter(
                   child: MainHeader(
@@ -1068,9 +1073,7 @@ class _GmssScreenState extends State<GmssScreen>
                                   child: DiamondCard(
                                     key: ValueKey("diamond-${stone.stockNo}"),
                                     stone: stone,
-                                    isFavorite: _savedStones.any(
-                                      (s) => s.stockNo == stone.stockNo,
-                                    ),
+                                    isFavorite: _savedStockNos.contains(stone.stockNo),
                                     onFavoriteTap: () => _toggleSave(stone),
                                     onCardTap: () => _handleCardTap(stone),
                                     themeColor: themeColor,

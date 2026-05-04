@@ -49,87 +49,80 @@ class DiamondCardState extends State<DiamondCard> {
               ),
             ],
           ),
-          child: TweenAnimationBuilder<double>(
-            duration: const Duration(milliseconds: 300),
-            tween: Tween(begin: 0.0, end: 1.0),
-            builder: (context, opacity, child) {
-              return Opacity(opacity: opacity, child: child);
-            },
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: Stack(
-                    children: [
-                      Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: SafeImage(
-                            url: widget.stone.image_link,
-                            size: 160,
-                            stone: widget.stone,
-                          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 3,
+                child: Stack(
+                  children: [
+                    Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(12.0),
+                        child: SafeImage(
+                          url: widget.stone.image_link,
+                          size: 160,
+                          stone: widget.stone,
                         ),
                       ),
-                      Positioned(
-                        top: 5,
-                        right: 5,
-                        child: IconButton(
-                          icon: Icon(
-                            widget.isFavorite
-                                ? Icons.favorite
-                                : Icons.favorite_border,
-                            color: widget.isFavorite
-                                ? widget.themeColor
-                                : Colors.grey.shade300,
-                            size: 20,
-                          ),
-                          onPressed: widget.onFavoriteTap,
+                    ),
+                    Positioned(
+                      top: 5,
+                      right: 5,
+                      child: IconButton(
+                        icon: Icon(
+                          widget.isFavorite
+                              ? Icons.favorite
+                              : Icons.favorite_border,
+                          color: widget.isFavorite
+                              ? widget.themeColor
+                              : Colors.grey.shade300,
+                          size: 20,
                         ),
+                        onPressed: widget.onFavoriteTap,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        "${widget.stone.weight} CARAT ${widget.stone.shapeStr.toUpperCase()}",
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 13,
-                        ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      "${widget.stone.weight} CARAT ${widget.stone.shapeStr.toUpperCase()}",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 13,
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        "${widget.stone.displayColor} • ${widget.stone.clarityStr} • ${widget.stone.lab}",
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.grey.shade600,
-                          fontSize: 10,
-                        ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      "${widget.stone.displayColor} • ${widget.stone.clarityStr} • ${widget.stone.lab}",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 10,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        "\$${widget.stone.total_price.toStringAsFixed(2)}",
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w900,
-                          fontSize: 14,
-                          color: Colors.black87,
-                        ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "\$${widget.stone.total_price.toStringAsFixed(2)}",
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w900,
+                        fontSize: 14,
+                        color: Colors.black87,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
