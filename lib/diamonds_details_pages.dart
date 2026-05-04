@@ -387,16 +387,13 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
                 ),
                 onPressed: () => Navigator.of(context).pop(),
               ),
-              title: Image.network(
-                "https://www.brilliance.com/sites/default/files/logo_0.png",
-                height: 25,
-                errorBuilder: (context, error, stackTrace) => const Text(
-                  "Brilliance",
-                  style: TextStyle(
-                    color: headerTheme,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                  ),
+              title: Text(
+                "BRILLIANCE",
+                style: TextStyle(
+                  color: headerTheme,
+                  fontWeight: FontWeight.w900,
+                  fontSize: 20,
+                  letterSpacing: 2,
                 ),
               ),
               actions: [

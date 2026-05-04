@@ -15,11 +15,15 @@ class SafeImage extends StatelessWidget {
   });
   @override
   Widget build(BuildContext context) {
-    if (url.isEmpty || url == "null" || !url.startsWith('http')) {
+    String optimizedUrl = url.trim();
+    if (optimizedUrl.isEmpty ||
+        optimizedUrl == "null" ||
+        !optimizedUrl.startsWith('http')) {
       return _buildShapePlaceholder();
     }
+
     return Image.network(
-      url,
+      optimizedUrl,
       fit: BoxFit.contain,
       cacheWidth: 300,
       cacheHeight: 300,

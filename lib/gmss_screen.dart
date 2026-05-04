@@ -237,7 +237,6 @@ class _GmssScreenState extends State<GmssScreen>
         ? _cachedLabGrownMap
         : _cachedNaturalMap;
 
-
     if (!targetCache.containsKey(shapeId)) {
       setState(() => _isFiltering = true);
       final Map<String, dynamic> responseMap = (selectedOrigin == 1)
@@ -556,11 +555,10 @@ class _GmssScreenState extends State<GmssScreen>
     if (_hasMoreData && !_isMoreLoading) {
       _isMoreLoading = true;
       setState(() {
-        _localVisibleCount += 12; // Smaller chunks for smoother UI pop-in
+        _localVisibleCount += 12;
         if (_localVisibleCount > _allFilteredStones.length) {
           _localVisibleCount = _allFilteredStones.length;
         }
-        _displayedStones = _allFilteredStones.take(_localVisibleCount).toList();
         _hasMoreData = _localVisibleCount < _allFilteredStones.length;
         _isMoreLoading = false;
       });
@@ -626,8 +624,7 @@ class _GmssScreenState extends State<GmssScreen>
           };
         }
       }
-    } catch (e) {
-    }
+    } catch (e) {}
   }
 
   @override
@@ -687,8 +684,7 @@ class _GmssScreenState extends State<GmssScreen>
             };
           }
         }
-      } catch (e) {
-      }
+      } catch (e) {}
     }
   }
 
@@ -709,8 +705,7 @@ class _GmssScreenState extends State<GmssScreen>
             );
           });
         }
-      } catch (e) {
-      }
+      } catch (e) {}
     }
   }
 
@@ -919,7 +914,7 @@ class _GmssScreenState extends State<GmssScreen>
           Expanded(
             child: CustomScrollView(
               controller: _scrollController,
-              cacheExtent: 3000, // Pre-renders items much further ahead
+              cacheExtent: 5000, // Very large buffer for seamless scrolling
               physics: const BouncingScrollPhysics(),
               slivers: [
                 SliverToBoxAdapter(
@@ -1051,56 +1046,48 @@ class _GmssScreenState extends State<GmssScreen>
                                 ),
                             delegate: SliverChildBuilderDelegate(
                               (context, index) {
-                                final List<GmssStone> stones = _currentTab == 0
-                                    ? _displayedStones
+                                final GmssStone stone = _currentTab == 0
+                                    ? _allFilteredStones[index]
                                     : (_currentTab == 1
-                                          ? _recentlyViewed
-                                          : _savedStones);
-                                if (index >= stones.length) return null;
-                                final stone = stones[index];
+                                          ? _recentlyViewed[index]
+                                          : _savedStones[index]);
                                 return RepaintBoundary(
                                   child: DiamondCard(
                                     key: ValueKey("diamond-${stone.stockNo}"),
                                     stone: stone,
-                                    isFavorite: _savedStockNos.contains(stone.stockNo),
+                                    isFavorite: _savedStockNos.contains(
+                                      stone.stockNo,
+                                    ),
                                     onFavoriteTap: () => _toggleSave(stone),
                                     onCardTap: () => _handleCardTap(stone),
                                     themeColor: themeColor,
                                   ),
                                 );
                               },
-                              childCount:
-                                  (_currentTab == 0
-                                          ? _displayedStones
-                                          : (_currentTab == 1
-                                                ? _recentlyViewed
-                                                : _savedStones))
-                                      .length,
+                              childCount: _currentTab == 0
+                                  ? _localVisibleCount
+                                  : (_currentTab == 1
+                                        ? _recentlyViewed.length
+                                        : _savedStones.length),
                             ),
                           )
                         : SliverList(
                             delegate: SliverChildBuilderDelegate(
                               (context, index) {
-                                final List<GmssStone> stones = _currentTab == 0
-                                    ? _displayedStones
+                                final GmssStone stone = _currentTab == 0
+                                    ? _allFilteredStones[index]
                                     : (_currentTab == 1
-                                          ? _recentlyViewed
-                                          : _savedStones);
-                                if (index >= stones.length) return null;
+                                          ? _recentlyViewed[index]
+                                          : _savedStones[index]);
                                 return RepaintBoundary(
-                                  child: _buildDiamondRow(
-                                    stones[index],
-                                    themeColor,
-                                  ),
+                                  child: _buildDiamondRow(stone, themeColor),
                                 );
                               },
-                              childCount:
-                                  (_currentTab == 0
-                                          ? _displayedStones
-                                          : (_currentTab == 1
-                                                ? _recentlyViewed
-                                                : _savedStones))
-                                      .length,
+                              childCount: _currentTab == 0
+                                  ? _localVisibleCount
+                                  : (_currentTab == 1
+                                        ? _recentlyViewed.length
+                                        : _savedStones.length),
                             ),
                           ),
                   ),
