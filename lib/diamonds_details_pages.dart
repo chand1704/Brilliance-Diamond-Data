@@ -33,6 +33,7 @@ class DiamondDetailScreen extends StatefulWidget {
 class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
   GmssStone? _currentStone;
   bool _isLoading = true;
+  final ValueNotifier<bool> _isPopupVideoLoading = ValueNotifier<bool>(true);
   static const String shapeBaseUrl =
       "https://demo.kodllin.com/apis/storage/app/shape_images/";
   final List<Map<String, dynamic>> shapeCategories = [
@@ -88,6 +89,7 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
       _caratNotifier.value = _currentStone!.weight;
       _isLoading = false;
       _registerVideoFactory();
+      _registerPopupVideoFactory(_currentStone!);
     } else {
       _loadStoneData();
     }
@@ -137,17 +139,27 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
     });
     GmssStone.addToHistory(stone);
     _registerVideoFactory();
+    _registerPopupVideoFactory(stone);
+  }
+
+  void _registerPopupVideoFactory(GmssStone stone) {
     if (stone.video_link.isNotEmpty && stone.video_link != "null") {
       final String popupViewId = 'diamond-360-viewer-${stone.id}';
-      ui.platformViewRegistry.registerViewFactory(
-        popupViewId,
-        (int viewId) => html.IFrameElement()
+      // ignore: undefined_prefixed_name
+      ui.platformViewRegistry.registerViewFactory(popupViewId, (int viewId) {
+        final iframe = html.IFrameElement()
           ..src = stone.video_link
           ..style.border = 'none'
           ..width = '100%'
           ..height = '100%'
-          ..setAttribute('allowfullscreen', 'true'),
-      );
+          ..setAttribute('allowfullscreen', 'true');
+
+        iframe.onLoad.listen((_) {
+          _isPopupVideoLoading.value = false;
+        });
+
+        return iframe;
+      });
     }
   }
 
@@ -180,68 +192,124 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
       );
       return;
     }
+
+    _isPopupVideoLoading.value = true;
     final String popupViewId = 'diamond-360-viewer-${_currentStone!.id}';
+
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
       barrierLabel: "360View",
-      transitionDuration: const Duration(milliseconds: 0),
+      barrierColor: Colors.black.withOpacity(0.7),
+      transitionDuration: const Duration(milliseconds: 400),
       pageBuilder: (context, anim1, anim2) {
         return Center(
           child: Material(
             color: Colors.transparent,
             child: Container(
-              width: MediaQuery.of(context).size.width * 0.6,
-              height: MediaQuery.of(context).size.height * 0.80,
+              width: MediaQuery.of(context).size.width * 0.7,
+              height: MediaQuery.of(context).size.height * 0.85,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.3),
-                    blurRadius: 30,
-                    spreadRadius: 5,
+                    color: Colors.black.withOpacity(0.4),
+                    blurRadius: 40,
+                    spreadRadius: -10,
                   ),
                 ],
               ),
               child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(24),
                 child: Stack(
                   children: [
+                    // Loader
+                    ValueListenableBuilder<bool>(
+                      valueListenable: _isPopupVideoLoading,
+                      builder: (context, isLoading, child) {
+                        return AnimatedOpacity(
+                          opacity: isLoading ? 1.0 : 0.0,
+                          duration: const Duration(milliseconds: 300),
+                          child: Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const CircularProgressIndicator(
+                                  strokeWidth: 3,
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    Color(0xFF005AAB),
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                                Text(
+                                  "Loading 360° View...",
+                                  style: TextStyle(
+                                    color: Colors.grey.shade600,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+
+                    // Video
                     HtmlElementView(
                       key: ValueKey(popupViewId),
                       viewType: popupViewId,
                     ),
+
+                    // Header
                     Positioned(
                       top: 25,
                       left: 30,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const SizedBox(height: 4),
                           Text(
                             "360° HIGH-DEFINITION VIEW",
                             style: TextStyle(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.grey.shade600,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w900,
+                              color: const Color(0xFF005AAB).withOpacity(0.8),
                               letterSpacing: 2,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Container(
+                            height: 2,
+                            width: 40,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF005AAB),
+                              borderRadius: BorderRadius.circular(1),
                             ),
                           ),
                         ],
                       ),
                     ),
+
+                    // Close Button
                     Positioned(
                       top: 20,
                       right: 20,
-                      child: IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(
-                          Icons.close,
-                          color: Colors.black54,
-                          size: 28,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          shape: BoxShape.circle,
                         ),
-                        splashRadius: 25,
+                        child: IconButton(
+                          onPressed: () => Navigator.pop(context),
+                          icon: const Icon(
+                            Icons.close,
+                            color: Colors.black87,
+                            size: 24,
+                          ),
+                          splashRadius: 25,
+                        ),
                       ),
                     ),
                   ],
@@ -255,8 +323,8 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
         return FadeTransition(
           opacity: anim1,
           child: ScaleTransition(
-            scale: Tween<double>(begin: 0.95, end: 1.0).animate(
-              CurvedAnimation(parent: anim1, curve: Curves.easeOutCubic),
+            scale: Tween<double>(begin: 0.9, end: 1.0).animate(
+              CurvedAnimation(parent: anim1, curve: Curves.easeOutBack),
             ),
             child: child,
           ),
