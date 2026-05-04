@@ -128,7 +128,7 @@ class GmssStone {
       'id': id,
       'isLab': isLab,
       'stockNo': stockNo,
-      'shapeStr': shapeStr,
+      'shape': shapeStr,
       'shapeIcon': shapeIcon,
       'weight': weight,
       'color': colorStr,

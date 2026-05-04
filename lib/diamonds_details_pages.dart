@@ -316,7 +316,11 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
               elevation: 0,
               centerTitle: true,
               leading: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new, color: Colors.black87, size: 20),
+                icon: const Icon(
+                  Icons.arrow_back_ios_new,
+                  color: Colors.black87,
+                  size: 20,
+                ),
                 onPressed: () => Navigator.of(context).pop(),
               ),
               title: Image.network(
@@ -333,7 +337,11 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
               ),
               actions: [
                 IconButton(
-                  icon: const Icon(Icons.share_outlined, color: Colors.black87, size: 20),
+                  icon: const Icon(
+                    Icons.share_outlined,
+                    color: Colors.black87,
+                    size: 20,
+                  ),
                   onPressed: () {},
                 ),
               ],
@@ -619,48 +627,53 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
           height: 500,
           width: double.infinity,
           decoration: const BoxDecoration(color: Color(0xFFF9F9F9)),
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: Image.asset(
-                  handImageUrl,
-                  fit: BoxFit.contain,
-                  errorBuilder: (context, error, stackTrace) => const Center(
-                    child: Text("Hand image not found in assets"),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return Stack(
+                children: [
+                  Positioned.fill(
+                    child: Image.asset(
+                      handImageUrl,
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Center(
+                            child: Text("Hand image not found in assets"),
+                          ),
+                    ),
                   ),
-                ),
-              ),
-              Positioned(
-                top: 120,
-                left: 216,
-                child: Transform.rotate(
-                  angle: _getRotationAngle(_currentStone!.shapeStr),
-                  child: Transform.scale(
-                    scale: scaleFactor,
-                    alignment: Alignment.center,
-                    child: SizedBox(
-                      width: 45,
-                      height: 45,
-                      child: Image.asset(
-                        _getShapeAssetPath(_currentStone!.shapeStr),
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) => Icon(
-                          Icons.diamond,
-                          color: Colors.grey.withValues(alpha: 0.5),
-                          size: 30,
+                  Positioned(
+                    top: constraints.maxHeight * 0.295,
+                    left: constraints.maxWidth * 0.445,
+                    child: Transform.rotate(
+                      angle: _getRotationAngle(_currentStone!.shapeStr),
+                      child: Transform.scale(
+                        scale: scaleFactor,
+                        alignment: Alignment.center,
+                        child: SizedBox(
+                          width: 45,
+                          height: 45,
+                          child: Image.asset(
+                            _getShapeAssetPath(_currentStone!.shapeStr),
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) => Icon(
+                              Icons.diamond,
+                              color: Colors.grey.withValues(alpha: 0.5),
+                              size: 30,
+                            ),
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ),
-              Positioned(
-                bottom: 25,
-                left: 25,
-                right: 25,
-                child: _buildSliderOverlay(caratValue),
-              ),
-            ],
+                  Positioned(
+                    bottom: 25,
+                    left: 25,
+                    right: 25,
+                    child: _buildSliderOverlay(caratValue),
+                  ),
+                ],
+              );
+            },
           ),
         );
       },

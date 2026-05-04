@@ -45,12 +45,13 @@ class GmssApiService {
     required bool isLab,
     required String authKey,
     int page = 1,
+    int perPage = 5000,
   }) async {
     try {
       final Map<String, String> queryParams = {
         'auth_key': authKey,
         'page': page.toString(),
-        'per_page': isLab ? '100000' : '20000',
+        'per_page': perPage.toString(),
       };
       if (shapeName != null && shapeName.toUpperCase() != "ALL") {
         String upper = shapeName.toUpperCase().trim();
@@ -67,10 +68,10 @@ class GmssApiService {
       }
       final uri = Uri.parse(baseUrl).replace(queryParameters: queryParams);
       debugPrint("--- API CALL (POST): $uri ---");
-      
+
       // Reverted to POST as the server returned 405 for GET
       final response = await http.post(uri);
-      
+
       if (response.statusCode == 200) {
         try {
           final result = await compute(
@@ -94,24 +95,28 @@ class GmssApiService {
   static Future<Map<String, dynamic>> fetchLabGrownData({
     String? shapeName,
     int page = 1,
+    int perPage = 5000,
   }) async {
     return _fetchDiamondData(
       shapeName: shapeName,
       isLab: true,
       authKey: labAuthKey,
       page: page,
+      perPage: perPage,
     );
   }
 
   static Future<Map<String, dynamic>> fetchNaturalData({
     String? shapeName,
     int page = 1,
+    int perPage = 5000,
   }) async {
     return _fetchDiamondData(
       shapeName: shapeName,
       isLab: false,
       authKey: naturalAuthKey,
       page: page,
+      perPage: perPage,
     );
   }
 }

@@ -243,8 +243,14 @@ class _GmssScreenState extends State<GmssScreen>
     if (!targetCache.containsKey(shapeId)) {
       setState(() => _isFiltering = true);
       final Map<String, dynamic> responseMap = (selectedOrigin == 1)
-          ? await GmssApiService.fetchLabGrownData(shapeName: selectedShape)
-          : await GmssApiService.fetchNaturalData(shapeName: selectedShape);
+          ? await GmssApiService.fetchLabGrownData(
+              shapeName: selectedShape,
+              perPage: 5000,
+            )
+          : await GmssApiService.fetchNaturalData(
+              shapeName: selectedShape,
+              perPage: 5000,
+            );
       targetCache[shapeId] = {
         'stones': responseMap['stones'],
         'total': responseMap['total'],
@@ -613,6 +619,7 @@ class _GmssScreenState extends State<GmssScreen>
         );
         final responseMap = await GmssApiService.fetchNaturalData(
           shapeName: selectedShape,
+          perPage: 5000,
         );
         if (mounted) {
           _cachedNaturalMap[shapeId] = {
@@ -665,6 +672,7 @@ class _GmssScreenState extends State<GmssScreen>
         if (!_cachedLabGrownMap.containsKey(shapeId)) {
           final res = await GmssApiService.fetchLabGrownData(
             shapeName: shapeName,
+            perPage: 500,
           );
           if (mounted && res['stones'] != null) {
             _cachedLabGrownMap[shapeId] = {
@@ -676,6 +684,7 @@ class _GmssScreenState extends State<GmssScreen>
         if (!_cachedNaturalMap.containsKey(shapeId)) {
           final resNatural = await GmssApiService.fetchNaturalData(
             shapeName: shapeName,
+            perPage: 500,
           );
           if (mounted && resNatural['stones'] != null) {
             _cachedNaturalMap[shapeId] = {
@@ -738,10 +747,11 @@ class _GmssScreenState extends State<GmssScreen>
     );
     GmssStone.addToHistory(stone);
     _loadHistoryFromStorage();
-    Navigator.pushNamed(
-      context,
-      '/details?id=${stone.stockNo}&shape=${stone.shapeStr}',
-    );
+
+    // Navigate in the same tab using Navigator to prevent connection errors
+    final String routeName =
+        "/details?id=${stone.stockNo}&shape=${stone.shapeStr}";
+    Navigator.pushNamed(context, routeName);
   }
 
   @override
