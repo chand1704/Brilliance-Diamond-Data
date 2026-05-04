@@ -642,8 +642,8 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
                     ),
                   ),
                   Positioned(
-                    top: constraints.maxHeight * 0.295,
-                    left: constraints.maxWidth * 0.445,
+                    top: constraints.maxHeight * 0.26,
+                    left: constraints.maxWidth * 0.46,
                     child: Transform.rotate(
                       angle: _getRotationAngle(_currentStone!.shapeStr),
                       child: Transform.scale(
