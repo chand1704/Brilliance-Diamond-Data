@@ -73,7 +73,6 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
       final Uri uri = Uri.parse(url);
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     } catch (e) {
-      debugPrint("Error launching URL: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Could not open certificate link")),
       );
@@ -106,9 +105,7 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
         );
         _updateUI(stone);
         return;
-      } catch (e) {
-        debugPrint("Error parsing local stone data: $e");
-      }
+      } catch (e) {}
     }
     if (widget.stoneId != null) {
       try {
@@ -124,7 +121,6 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
         ].firstWhere((s) => s.stockNo == widget.stoneId);
         _updateUI(foundStone);
       } catch (e) {
-        debugPrint("Stone not found in APIL $e");
         if (mounted) setState(() => _isLoading = false);
       }
     }

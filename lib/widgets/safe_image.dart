@@ -29,14 +29,7 @@ class SafeImage extends StatelessWidget {
       },
       loadingBuilder: (context, child, loadingProgress) {
         if (loadingProgress == null) return child;
-        return Center(
-          child: CircularProgressIndicator(
-            strokeWidth: 1,
-            valueColor: AlwaysStoppedAnimation<Color>(
-              Colors.teal.withOpacity(0.1),
-            ),
-          ),
-        );
+        return _buildShapePlaceholder(); // Use static placeholder instead of animated loader
       },
     );
   }

@@ -67,7 +67,6 @@ class GmssApiService {
         }
       }
       final uri = Uri.parse(baseUrl).replace(queryParameters: queryParams);
-      debugPrint("--- API CALL (POST): $uri ---");
 
       // Reverted to POST as the server returned 405 for GET
       final response = await http.post(uri);
@@ -80,14 +79,11 @@ class GmssApiService {
           );
           return result;
         } catch (e) {
-          debugPrint("JSON Parsing Error: $e");
           return {'stones': <GmssStone>[], 'total': 0};
         }
       } else {
-        debugPrint("API Error: ${response.statusCode} - ${response.body}");
       }
     } catch (e) {
-      debugPrint("Network Error: $e");
     }
     return {'stones': <GmssStone>[], 'total': 0};
   }

@@ -237,9 +237,6 @@ class _GmssScreenState extends State<GmssScreen>
         ? _cachedLabGrownMap
         : _cachedNaturalMap;
 
-    debugPrint(
-      "--- SmartData: Shape=$selectedShape, Origin=${selectedOrigin == 1 ? 'Lab' : 'Natural'}, Cached=${targetCache.containsKey(shapeId)} ---",
-    );
 
     if (!targetCache.containsKey(shapeId)) {
       setState(() => _isFiltering = true);
@@ -333,7 +330,6 @@ class _GmssScreenState extends State<GmssScreen>
         _isMoreLoading = false;
       });
     } catch (e) {
-      debugPrint("Error during filtering: $e");
       if (mounted) {
         setState(() {
           _isFiltering = false;
@@ -557,7 +553,8 @@ class _GmssScreenState extends State<GmssScreen>
   }
 
   void _handleLoadMore() {
-    if (_hasMoreData) {
+    if (_hasMoreData && !_isMoreLoading) {
+      _isMoreLoading = true;
       setState(() {
         _localVisibleCount += 12; // Smaller chunks for smoother UI pop-in
         if (_localVisibleCount > _allFilteredStones.length) {
@@ -565,6 +562,7 @@ class _GmssScreenState extends State<GmssScreen>
         }
         _displayedStones = _allFilteredStones.take(_localVisibleCount).toList();
         _hasMoreData = _localVisibleCount < _allFilteredStones.length;
+        _isMoreLoading = false;
       });
     }
   }
@@ -617,9 +615,6 @@ class _GmssScreenState extends State<GmssScreen>
       if (!mounted) return;
       int shapeId = selectedShapeId;
       if (!_cachedNaturalMap.containsKey(shapeId)) {
-        debugPrint(
-          "--- Background Pre-fetching Natural Data for $selectedShape ---",
-        );
         final responseMap = await GmssApiService.fetchNaturalData(
           shapeName: selectedShape,
           perPage: 5000,
@@ -629,13 +624,9 @@ class _GmssScreenState extends State<GmssScreen>
             'stones': responseMap['stones'],
             'total': responseMap['total'],
           };
-          debugPrint(
-            "--- Background Pre-fetch Complete: ${responseMap['total']} Natural stones ---",
-          );
         }
       }
     } catch (e) {
-      debugPrint("Pre-fetch error: $e");
     }
   }
 
@@ -697,7 +688,6 @@ class _GmssScreenState extends State<GmssScreen>
           }
         }
       } catch (e) {
-        debugPrint("Gentle prefetch error for $shapeName: $e");
       }
     }
   }
@@ -720,7 +710,6 @@ class _GmssScreenState extends State<GmssScreen>
           });
         }
       } catch (e) {
-        debugPrint("Error loading history: $e");
       }
     }
   }
@@ -930,7 +919,7 @@ class _GmssScreenState extends State<GmssScreen>
           Expanded(
             child: CustomScrollView(
               controller: _scrollController,
-              cacheExtent: 1500, // Pre-renders items to make scroll smoother
+              cacheExtent: 3000, // Pre-renders items much further ahead
               physics: const BouncingScrollPhysics(),
               slivers: [
                 SliverToBoxAdapter(
