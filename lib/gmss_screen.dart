@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:html' as html;
+import 'dart:ui';
 
 import 'package:brilliance_diamond_data/model/gmss_stone_model.dart';
 import 'package:brilliance_diamond_data/service/gmss_api_service.dart';
@@ -28,6 +29,7 @@ class _GmssScreenState extends State<GmssScreen>
   int _filteredCompareCount = 0;
   final Set<String> _savedStockNos = {};
   bool _isFiltering = false;
+  bool _isFetching = false;
   bool _hasMoreData = true;
   int _totalStonesFromApi = 0;
   final Set<String> _expandedStoneStockNos = {};
@@ -237,23 +239,32 @@ class _GmssScreenState extends State<GmssScreen>
         ? _cachedLabGrownMap
         : _cachedNaturalMap;
 
+    if (_isFetching) return _displayedStones;
     if (!targetCache.containsKey(shapeId)) {
+      _isFetching = true;
       setState(() => _isFiltering = true);
-      final Map<String, dynamic> responseMap = (selectedOrigin == 1)
-          ? await GmssApiService.fetchLabGrownData(
-              shapeName: selectedShape,
-              perPage: 5000,
-            )
-          : await GmssApiService.fetchNaturalData(
-              shapeName: selectedShape,
-              perPage: 5000,
-            );
-      targetCache[shapeId] = {
-        'stones': responseMap['stones'],
-        'total': responseMap['total'],
-      };
+      try {
+        final Map<String, dynamic> responseMap = (selectedOrigin == 1)
+            ? await GmssApiService.fetchLabGrownData(
+                shapeName: selectedShape,
+                perPage: 5000,
+              )
+            : await GmssApiService.fetchNaturalData(
+                shapeName: selectedShape,
+                perPage: 5000,
+              );
+        targetCache[shapeId] = {
+          'stones': responseMap['stones'],
+          'total': responseMap['total'],
+        };
+      } catch (e) {
+        _isFetching = false;
+        setState(() => _isFiltering = false);
+        return [];
+      }
+      _isFetching = false;
     }
-    _refreshDisplayedStones();
+    await _refreshDisplayedStones();
     return _displayedStones;
   }
 
@@ -264,7 +275,7 @@ class _GmssScreenState extends State<GmssScreen>
     });
   }
 
-  void _refreshDisplayedStones() async {
+  Future<void> _refreshDisplayedStones() async {
     if (!mounted) return;
     int shapeId = selectedShapeId;
     Map<int, Map<String, dynamic>> targetCache = (selectedOrigin == 1)
@@ -272,9 +283,21 @@ class _GmssScreenState extends State<GmssScreen>
         : _cachedNaturalMap;
     List<GmssStone> allCachedStones = targetCache[shapeId]?['stones'] ?? [];
     int totalFromApi = targetCache[shapeId]?['total'] ?? 0;
+
+    if (allCachedStones.isEmpty && totalFromApi == 0) {
+      setState(() {
+        _allFilteredStones = [];
+        _displayedStones = [];
+        _totalFilteredStonesCount = 0;
+        _isFiltering = false;
+      });
+      return;
+    }
+
     if (totalFromApi == 0 && allCachedStones.isNotEmpty) {
       totalFromApi = allCachedStones.length;
     }
+
     setState(() => _isFiltering = true);
     try {
       final filteredResults = await compute(_applyFilteringStatic, {
@@ -315,6 +338,7 @@ class _GmssScreenState extends State<GmssScreen>
           'certLabels': certLabels,
         },
       });
+
       if (!mounted) return;
       setState(() {
         _allFilteredStones = filteredResults;
@@ -559,6 +583,7 @@ class _GmssScreenState extends State<GmssScreen>
         if (_localVisibleCount > _allFilteredStones.length) {
           _localVisibleCount = _allFilteredStones.length;
         }
+        _displayedStones = _allFilteredStones.take(_localVisibleCount).toList();
         _hasMoreData = _localVisibleCount < _allFilteredStones.length;
         _isMoreLoading = false;
       });
@@ -583,7 +608,7 @@ class _GmssScreenState extends State<GmssScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1400),
     )..repeat();
-    _future = _getSmartData();
+    Future.microtask(() => _getSmartData());
 
     // Immediate pre-fetch of Natural data for current shape
     _preFetchCurrentShapeNatural();
@@ -912,149 +937,142 @@ class _GmssScreenState extends State<GmssScreen>
               child: SingleChildScrollView(child: filtersWidget),
             ),
           Expanded(
-            child: CustomScrollView(
-              controller: _scrollController,
-              cacheExtent:
-                  2000, // Balanced buffer for performance and smoothness
-              physics: const BouncingScrollPhysics(),
-              slivers: [
-                SliverToBoxAdapter(
-                  child: MainHeader(
-                    themeColor: themeColor,
-                    shapeCategories: shapeCategories,
-                    onNaturalDiamondsTap: () {
-                      if (selectedOrigin == 2 && !isFancySearch) return;
-                      setState(() {
-                        isFancySearch = false;
-                        selectedOrigin = 2;
-                        _currentPage = 1;
-                        bool isCached = _cachedNaturalMap.containsKey(
-                          selectedShapeId,
-                        );
-                        if (!isCached) {
-                          _displayedStones = [];
-                        }
-                        _totalStonesFromApi = 0;
-                        _future = _getSmartData(isLoadMore: false);
-                      });
-                    },
-                    onFancyDiamondsTap: (colorName) {
-                      setState(() {
-                        isFancySearch = true;
-                        _currentTab = 0;
-                        if (colorName != null) {
-                          final foundColor = fancyColors.firstWhere(
-                            (c) =>
-                                c['name'].toString().toLowerCase() ==
-                                colorName.toLowerCase(),
-                            orElse: () => {'id': null},
-                          );
-                          selectedFancyColor = colorName;
-                          selectedFancyColorId = foundColor['id'];
-                        } else {
-                          selectedFancyColor = null;
-                          selectedFancyColorId = null;
-                        }
-                        _future = _getSmartData();
-                      });
-                    },
-                    onShapeTap: (shapeName, shapeId) {
-                      if (selectedShapeId == shapeId) return;
-                      setState(() {
-                        selectedShape = shapeName;
-                        selectedShapeId = shapeId;
-                        _currentPage = 1;
-                        _displayedStones = [];
-                        _totalStonesFromApi = 0;
-                        _hasMoreData = true;
-                        _future = _getSmartData(isLoadMore: false);
-                      });
-                      if (_scrollController.hasClients) {
-                        _scrollController.jumpTo(0);
-                      }
-                    },
-                  ),
+            child: ScrollConfiguration(
+              behavior: ScrollConfiguration.of(context).copyWith(
+                dragDevices: {
+                  PointerDeviceKind.touch,
+                  PointerDeviceKind.mouse,
+                  PointerDeviceKind.trackpad,
+                },
+              ),
+              child: CustomScrollView(
+                controller: _scrollController,
+                cacheExtent: 1000,
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: RangeMaintainingScrollPhysics(),
                 ),
-                SliverToBoxAdapter(child: _buildHeader()),
-                SliverToBoxAdapter(child: _buildShapeSelector(shapeCategories)),
-                if (_isFiltering)
+                slivers: [
                   SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(2),
-                        child: LinearProgressIndicator(
-                          backgroundColor: themeColor.withOpacity(0.05),
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            themeColor.withOpacity(0.6),
+                    child: MainHeader(
+                      themeColor: themeColor,
+                      onNaturalDiamondsTap: () {
+                        setState(() {
+                          selectedOrigin = 0;
+                          _currentPage = 1;
+                          _allFilteredStones = [];
+                          _totalStonesFromApi = 0;
+                          _displayedStones = [];
+                          _future = _getSmartData();
+                        });
+                      },
+                      onFancyDiamondsTap: (colorName) {
+                        setState(() {
+                          isFancySearch = colorName != null;
+                          selectedFancyColor = colorName;
+                          _currentPage = 1;
+                          _allFilteredStones = [];
+                          _totalStonesFromApi = 0;
+                          _displayedStones = [];
+                          _future = _getSmartData();
+                        });
+                      },
+                      onShapeTap: (shapeName, shapeId) {
+                        if (selectedShapeId == shapeId) return;
+                        setState(() {
+                          selectedShapeId = shapeId;
+                          selectedShape = shapeName;
+                          _currentPage = 1;
+                          _allFilteredStones = [];
+                          _totalStonesFromApi = 0;
+                          _displayedStones = [];
+                          _future = _getSmartData();
+                        });
+                      },
+                      shapeCategories: shapeCategories,
+                    ),
+                  ),
+                  SliverToBoxAdapter(child: _buildHeader()),
+                  SliverToBoxAdapter(
+                    child: _buildShapeSelector(shapeCategories),
+                  ),
+                  if (_isFiltering)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 24),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(2),
+                          child: LinearProgressIndicator(
+                            backgroundColor: themeColor.withOpacity(0.05),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              themeColor.withOpacity(0.6),
+                            ),
+                            minHeight: 2,
                           ),
-                          minHeight: 2,
                         ),
                       ),
                     ),
-                  ),
-                SliverToBoxAdapter(
-                  child: _buildUnifiedInventoryToolbar(
-                    mainCount: _totalFilteredStonesCount,
-                    historyCount: _recentlyViewed.length,
-                    compareCount: _filteredCompareCount,
-                    themeColor: themeColor,
-                    isDesktop: isDesktop,
-                    onFilterTap: () => _scaffoldKey.currentState?.openDrawer(),
-                  ),
-                ),
-                if ((_isFiltering && _allFilteredStones.isEmpty) ||
-                    (_allFilteredStones.isEmpty && _currentPage == 1))
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 20,
+                  SliverToBoxAdapter(
+                    child: _buildUnifiedInventoryToolbar(
+                      mainCount: _totalFilteredStonesCount,
+                      historyCount: _recentlyViewed.length,
+                      compareCount: _filteredCompareCount,
+                      themeColor: themeColor,
+                      isDesktop: isDesktop,
+                      onFilterTap: () =>
+                          _scaffoldKey.currentState?.openDrawer(),
                     ),
-                    sliver: SliverGrid(
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 4,
-                            childAspectRatio: 0.87,
-                            crossAxisSpacing: 15,
-                            mainAxisSpacing: 15,
-                          ),
-                      delegate: SliverChildBuilderDelegate(
-                        (c, i) => _buildSkeletonCard(),
-                        childCount: 8,
+                  ),
+                  if (_allFilteredStones.isEmpty &&
+                      (_isFiltering || _currentPage == 1))
+                    SliverPadding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 20,
+                      ),
+                      sliver: SliverGrid(
+                        gridDelegate:
+                            const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 4,
+                              childAspectRatio: 0.87,
+                              crossAxisSpacing: 15,
+                              mainAxisSpacing: 15,
+                            ),
+                        delegate: SliverChildBuilderDelegate(
+                          (c, i) => _buildSkeletonCard(),
+                          childCount: 8,
+                        ),
                       ),
                     ),
-                  ),
-                if (!_isFiltering &&
-                    (_allFilteredStones.isNotEmpty || _currentPage > 1))
-                  SliverPadding(
-                    key: ValueKey("page-$selectedShapeId-$_currentTab"),
-                    padding: const EdgeInsets.only(
-                      left: 24,
-                      right: 24,
-                      bottom: 20,
-                    ),
-                    sliver: isGridView
-                        ? SliverGrid(
-                            gridDelegate:
-                                SliverGridDelegateWithMaxCrossAxisExtent(
-                                  maxCrossAxisExtent: 350,
-                                  childAspectRatio:
-                                      MediaQuery.of(context).size.width < 768
-                                      ? 0.75
-                                      : 0.92,
-                                  crossAxisSpacing: 15,
-                                  mainAxisSpacing: 15,
-                                ),
-                            delegate: SliverChildBuilderDelegate(
-                              (context, index) {
-                                final GmssStone stone = _currentTab == 0
-                                    ? _allFilteredStones[index]
-                                    : (_currentTab == 1
-                                          ? _recentlyViewed[index]
-                                          : _savedStones[index]);
-                                return RepaintBoundary(
-                                  child: DiamondCard(
-                                    key: ValueKey("diamond-${stone.stockNo}"),
+                  if (_allFilteredStones.isNotEmpty || _currentPage > 1)
+                    SliverPadding(
+                      padding: const EdgeInsets.only(
+                        left: 24,
+                        right: 24,
+                        bottom: 20,
+                      ),
+                      sliver: isGridView
+                          ? SliverGrid(
+                              gridDelegate:
+                                  SliverGridDelegateWithMaxCrossAxisExtent(
+                                    maxCrossAxisExtent: 350,
+                                    childAspectRatio:
+                                        MediaQuery.of(context).size.width < 768
+                                        ? 0.75
+                                        : 0.92,
+                                    crossAxisSpacing: 15,
+                                    mainAxisSpacing: 15,
+                                  ),
+                              delegate: SliverChildBuilderDelegate(
+                                (context, index) {
+                                  final GmssStone stone;
+                                  if (_currentTab == 0) {
+                                    stone = _allFilteredStones[index];
+                                  } else if (_currentTab == 1) {
+                                    stone = _recentlyViewed[index];
+                                  } else {
+                                    stone = _savedStones[index];
+                                  }
+                                  return DiamondCard(
                                     stone: stone,
                                     isFavorite: _savedStockNos.contains(
                                       stone.stockNo,
@@ -1062,43 +1080,50 @@ class _GmssScreenState extends State<GmssScreen>
                                     onFavoriteTap: () => _toggleSave(stone),
                                     onCardTap: () => _handleCardTap(stone),
                                     themeColor: themeColor,
-                                  ),
-                                );
-                              },
-                              childCount: _currentTab == 0
-                                  ? _localVisibleCount
-                                  : (_currentTab == 1
-                                        ? _recentlyViewed.length
-                                        : _savedStones.length),
-                              addAutomaticKeepAlives: false,
-                              addRepaintBoundaries: false,
-                            ),
-                          )
-                        : SliverList(
-                            delegate: SliverChildBuilderDelegate(
-                              (context, index) {
-                                final GmssStone stone = _currentTab == 0
-                                    ? _allFilteredStones[index]
+                                  );
+                                },
+                                childCount: _currentTab == 0
+                                    ? (_allFilteredStones.length <
+                                              _localVisibleCount
+                                          ? _allFilteredStones.length
+                                          : _localVisibleCount)
                                     : (_currentTab == 1
-                                          ? _recentlyViewed[index]
-                                          : _savedStones[index]);
-                                return RepaintBoundary(
-                                  child: _buildDiamondRow(stone, themeColor),
-                                );
-                              },
-                              childCount: _currentTab == 0
-                                  ? _localVisibleCount
-                                  : (_currentTab == 1
-                                        ? _recentlyViewed.length
-                                        : _savedStones.length),
-                              addAutomaticKeepAlives: false,
-                              addRepaintBoundaries: false,
+                                          ? _recentlyViewed.length
+                                          : _savedStones.length),
+                                addAutomaticKeepAlives: true,
+                                addRepaintBoundaries: true,
+                              ),
+                            )
+                          : SliverList(
+                              delegate: SliverChildBuilderDelegate(
+                                (context, index) {
+                                  final GmssStone stone;
+                                  if (_currentTab == 0) {
+                                    stone = _allFilteredStones[index];
+                                  } else if (_currentTab == 1) {
+                                    stone = _recentlyViewed[index];
+                                  } else {
+                                    stone = _savedStones[index];
+                                  }
+                                  return _buildDiamondRow(stone, themeColor);
+                                },
+                                childCount: _currentTab == 0
+                                    ? (_allFilteredStones.length <
+                                              _localVisibleCount
+                                          ? _allFilteredStones.length
+                                          : _localVisibleCount)
+                                    : (_currentTab == 1
+                                          ? _recentlyViewed.length
+                                          : _savedStones.length),
+                                addAutomaticKeepAlives: true,
+                                addRepaintBoundaries: true,
+                              ),
                             ),
-                          ),
-                  ),
-                SliverToBoxAdapter(child: const SizedBox.shrink()),
-                const SliverToBoxAdapter(child: SizedBox(height: 100)),
-              ],
+                    ),
+                  SliverToBoxAdapter(child: const SizedBox.shrink()),
+                  const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                ],
+              ),
             ),
           ),
         ],
