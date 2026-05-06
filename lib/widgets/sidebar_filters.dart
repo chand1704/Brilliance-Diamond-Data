@@ -312,25 +312,7 @@ class SidebarFilters extends StatelessWidget {
           divisions: saturationLabels.length - 1,
           themeColor: themeColor,
           onChanged: onSaturationChanged,
-          bottomBuilder: (v) => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: saturationLabels.map((label) {
-                int index = saturationLabels.indexOf(label);
-                bool isActive = index >= v.start && index <= v.end;
-
-                return Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 9,
-                    color: isActive ? Colors.black : Colors.grey,
-                    fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
+          bottomBuilder: (v) => _buildAlignedLabels(saturationLabels, v, 9.0),
         ),
       ],
     );
@@ -416,17 +398,8 @@ class SidebarFilters extends StatelessWidget {
           onChanged: onChanged,
           bottomBuilder: (v) => Column(
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: labels
-                    .map(
-                      (l) => Text(
-                        l,
-                        style: const TextStyle(fontSize: 8, color: Colors.grey),
-                      ),
-                    )
-                    .toList(),
-              ),
+              _buildAlignedLabels(labels, v, 8.0),
+              const SizedBox(height: 5),
               const Divider(),
             ],
           ),
@@ -469,6 +442,50 @@ class SidebarFilters extends StatelessWidget {
               fontWeight: FontWeight.bold,
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAlignedLabels(
+    List<String> labels,
+    RangeValues v,
+    double fontSize,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12.0),
+      child: SizedBox(
+        width: double.infinity,
+        child: Stack(
+          children: [
+            // Invisible text to ensure Stack has minimum height
+            Opacity(
+              opacity: 0.0,
+              child: Text(labels.first, style: TextStyle(fontSize: fontSize)),
+            ),
+            ...labels.map((label) {
+              int index = labels.indexOf(label);
+              bool isActive = index >= v.start && index <= v.end;
+              double alignX = labels.length > 1
+                  ? (index / (labels.length - 1)) * 2 - 1
+                  : 0.0;
+              return Positioned.fill(
+                child: Align(
+                  alignment: Alignment(alignX, 0.0),
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: fontSize,
+                      color: isActive ? Colors.black : Colors.grey,
+                      fontWeight: isActive
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ],
         ),
       ),
     );
@@ -560,24 +577,7 @@ class SidebarFilters extends StatelessWidget {
           divisions: shadeLabels.length - 1,
           themeColor: themeColor,
           onChanged: onColorChanged,
-          bottomBuilder: (v) => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: shadeLabels
-                  .map(
-                    (s) => Text(
-                      s,
-                      style: const TextStyle(
-                        fontSize: 10,
-                        color: Colors.grey,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ),
+          bottomBuilder: (v) => _buildAlignedLabels(shadeLabels, v, 10.0),
         ),
         const SizedBox(height: 20),
       ],
@@ -599,24 +599,7 @@ class SidebarFilters extends StatelessWidget {
           divisions: clarityLabels.length - 1,
           themeColor: themeColor,
           onChanged: onClarityChanged,
-          bottomBuilder: (v) => Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: clarityLabels
-                  .map(
-                    (c) => Text(
-                      c,
-                      style: const TextStyle(
-                        fontSize: 8,
-                        color: Colors.grey,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  )
-                  .toList(),
-            ),
-          ),
+          bottomBuilder: (v) => _buildAlignedLabels(clarityLabels, v, 8.0),
         ),
         const SizedBox(height: 20),
       ],
