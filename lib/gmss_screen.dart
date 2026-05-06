@@ -21,7 +21,7 @@ class GmssScreen extends StatefulWidget {
 class _GmssScreenState extends State<GmssScreen>
     with SingleTickerProviderStateMixin {
   int _currentPage = 1;
-  int _localVisibleCount = 5;
+  int _localVisibleCount = 12;
   int _totalFilteredStonesCount = 0;
   bool _isMoreLoading = false;
   List<GmssStone> _displayedStones = [];
@@ -31,7 +31,6 @@ class _GmssScreenState extends State<GmssScreen>
   bool _isFiltering = false;
   bool _isFetching = false;
   bool _hasMoreData = true;
-  int _totalStonesFromApi = 0;
   final Set<String> _expandedStoneStockNos = {};
   late AnimationController _shimmerController;
   static final Map<int, Map<String, dynamic>> _cachedLabGrownMap = {};
@@ -107,7 +106,6 @@ class _GmssScreenState extends State<GmssScreen>
     },
   ];
   final ScrollController _scrollController = ScrollController();
-  late Future<List<GmssStone>> _future;
   bool showOnlyWithImages = false;
   bool quickShipping = false;
   bool isGridView = true;
@@ -164,7 +162,6 @@ class _GmssScreenState extends State<GmssScreen>
     "I1",
   ];
   RangeValues _clarityRange = const RangeValues(0, 8);
-  List<GmssStone>? _lastRetrievedData;
   int selectedOrigin = 1;
   final String baseAssetUrl = "https://dev2.kodllin.com/";
   static const String shapeBaseUrl =
@@ -247,11 +244,11 @@ class _GmssScreenState extends State<GmssScreen>
         final Map<String, dynamic> responseMap = (selectedOrigin == 1)
             ? await GmssApiService.fetchLabGrownData(
                 shapeName: selectedShape,
-                perPage: 5000,
+                perPage: 1000,
               )
             : await GmssApiService.fetchNaturalData(
                 shapeName: selectedShape,
-                perPage: 5000,
+                perPage: 1000,
               );
         targetCache[shapeId] = {
           'stones': responseMap['stones'],
@@ -343,7 +340,6 @@ class _GmssScreenState extends State<GmssScreen>
       setState(() {
         _allFilteredStones = filteredResults;
         _totalFilteredStonesCount = filteredResults.length;
-        _totalStonesFromApi = totalFromApi;
         _savedStockNos.clear();
         _savedStockNos.addAll(_savedStones.map((s) => s.stockNo));
         _filteredCompareCount = _savedStones.length;
@@ -363,194 +359,116 @@ class _GmssScreenState extends State<GmssScreen>
   }
 
   static List<GmssStone> _applyFilteringStatic(Map<String, dynamic> data) {
-    final List<GmssStone> allStones = data['stones'];
-    final Map<String, dynamic> p = data['params'];
-    final String searchShapeUpper = p['selectedShape'].toString().toUpperCase();
-    final double caratStart = p['caratRangeStart'];
-    final double caratEnd = p['caratRangeEnd'];
-    final double priceStart = p['priceRangeStart'];
-    final double priceEnd = p['priceRangeEnd'];
-    final int origin = p['selectedOrigin'];
-    const cutMapping = {'ID': 0, 'EX': 1, 'VG': 2, 'GD': 3, 'FR': 4};
-    const polishMapping = {'EX': 0, 'VG': 1, 'GD': 2, 'FR': 3};
-    const symMapping = {
-      'EX': 3,
-      'VG': 2,
-      'GD': 1,
-      'FAIR': 0,
-      'PR': 0,
-      'POOR': 0,
-    };
-    const flMapping = {
-      'NONE': 0,
-      'NON': 0,
-      'VERY SLIGHT': 0,
-      'SLIGHT': 1,
-      'FAINT': 1,
-      'FNT': 1,
-      'MEDIUM': 2,
-      'MED': 2,
-      'STRONG': 3,
-      'STG': 3,
-      'VERY STRONG': 3,
-      'VST': 3,
-    };
+    final List<GmssStone> allStones = data['stones'] ?? [];
+    final Map<String, dynamic> p = data['params'] ?? {};
+    final String searchShapeUpper = (p['selectedShape'] ?? '')
+        .toString()
+        .toUpperCase();
+    final double caratStart = p['caratRangeStart'] ?? 0.0;
+    final double caratEnd = p['caratRangeEnd'] ?? 15.0;
+    final double priceStart = p['priceRangeStart'] ?? 0.0;
+    final double priceEnd = p['priceRangeEnd'] ?? 1000000.0;
+    final int origin = p['selectedOrigin'] ?? 1;
 
-    return allStones.where((stone) {
+    if (kDebugMode) {
+      print(
+        "Starting filter on ${allStones.length} stones. SearchShape: $searchShapeUpper, Origin: $origin",
+      );
+    }
+
+    int countOrigin = 0;
+    int countShape = 0;
+    int countCaratPrice = 0;
+    int countColor = 0;
+    int countClarity = 0;
+    // int countAdvanced = 0;
+
+    final results = allStones.where((stone) {
       // 1. Origin
       if ((origin == 1) != stone.isLab) return false;
+      countOrigin++;
 
       // 2. Shape
       final String stoneShape = stone.shapeStr.toUpperCase().trim();
+      bool shapeMatch = false;
       if (searchShapeUpper == "ALL") {
-        // Continue
+        shapeMatch = true;
       } else if (searchShapeUpper == "OTHER") {
-        if (stoneShape.contains("ROUND") ||
-            stoneShape == "R" ||
-            stoneShape == "RD" ||
-            stoneShape == "RB" ||
-            stoneShape == "BR")
-          return false;
-      } else if (searchShapeUpper == "ROUND") {
         if (!(stoneShape.contains("ROUND") ||
             stoneShape == "R" ||
             stoneShape == "RD" ||
             stoneShape == "RB" ||
+            stoneShape == "BR")) {
+          shapeMatch = true;
+        }
+      } else if (searchShapeUpper == "ROUND") {
+        if (stoneShape.contains("ROUND") ||
+            stoneShape == "R" ||
+            stoneShape == "RD" ||
+            stoneShape == "RB" ||
             stoneShape == "BR" ||
-            stoneShape == "RBC"))
-          return false;
+            stoneShape == "RBC") {
+          shapeMatch = true;
+        }
       } else if (searchShapeUpper == "PRINCESS") {
-        if (!(stoneShape.contains("PRINCESS") ||
+        if (stoneShape.contains("PRINCESS") ||
             stoneShape == "PR" ||
-            stoneShape == "PC"))
-          return false;
+            stoneShape == "PC") {
+          shapeMatch = true;
+        }
       } else if (searchShapeUpper == "EMERALD") {
-        if (!(stoneShape.contains("EMERALD") ||
+        if (stoneShape.contains("EMERALD") ||
             stoneShape == "EM" ||
-            stoneShape == "EC"))
-          return false;
-      } else if (searchShapeUpper == "CUSHION") {
-        if (!(stoneShape.contains("CUSHION") ||
-            stoneShape == "CU" ||
-            stoneShape == "CUS"))
-          return false;
-      } else if (searchShapeUpper == "RADIANT") {
-        if (!(stoneShape.contains("RADIANT") ||
-            stoneShape == "RA" ||
-            stoneShape == "RAD"))
-          return false;
-      } else if (searchShapeUpper == "OVAL") {
-        if (!(stoneShape.contains("OVAL") || stoneShape == "OV")) return false;
-      } else if (searchShapeUpper == "PEAR") {
-        if (!(stoneShape.contains("PEAR") ||
-            stoneShape == "PS" ||
-            stoneShape == "PE"))
-          return false;
-      } else if (searchShapeUpper == "MARQUISE") {
-        if (!(stoneShape.contains("MARQUISE") || stoneShape == "MQ"))
-          return false;
-      } else if (searchShapeUpper == "HEART") {
-        if (!(stoneShape.contains("HEART") || stoneShape == "HT")) return false;
-      } else if (searchShapeUpper == "ASSCHER") {
-        if (!(stoneShape.contains("ASSCHER") || stoneShape == "AS"))
-          return false;
-      } else if (!stoneShape.contains(searchShapeUpper)) {
-        return false;
+            stoneShape == "EC") {
+          shapeMatch = true;
+        }
+      } else if (stoneShape.contains(searchShapeUpper)) {
+        shapeMatch = true;
       }
+
+      if (!shapeMatch) return false;
+      countShape++;
 
       // 3. Basic Ranges (Carat & Price)
       if (stone.weight < caratStart || stone.weight > caratEnd) return false;
       if (stone.total_price < priceStart || stone.total_price > priceEnd) {
         return false;
       }
+      countCaratPrice++;
 
       // 4. Color Range (Natural Search)
       final bool isFancySearch = p['isFancySearch'] ?? false;
       if (!isFancySearch) {
-        final List<String> shadeLabels = List<String>.from(p['shadeLabels']);
+        final List<String> shadeLabels = List<String>.from(
+          p['shadeLabels'] ?? [],
+        );
         int colorIdx = shadeLabels.indexOf(stone.colorStr.trim().toUpperCase());
         if (colorIdx != -1) {
-          if (colorIdx < p['colorRangeStart'] ||
-              colorIdx > p['colorRangeEnd']) {
+          if (colorIdx < (p['colorRangeStart'] ?? 0) ||
+              colorIdx > (p['colorRangeEnd'] ?? 20)) {
             return false;
           }
         }
       }
+      countColor++;
 
       // 5. Clarity Range
-      final List<String> clarityLabels = List<String>.from(p['clarityLabels']);
+      final List<String> clarityLabels = List<String>.from(
+        p['clarityLabels'] ?? [],
+      );
       int clarityIdx = clarityLabels.indexOf(
         stone.clarityStr.trim().toUpperCase(),
       );
       if (clarityIdx != -1) {
-        if (clarityIdx < p['clarityRangeStart'] ||
-            clarityIdx > p['clarityRangeEnd']) {
+        if (clarityIdx < (p['clarityRangeStart'] ?? 0) ||
+            clarityIdx > (p['clarityRangeEnd'] ?? 20)) {
           return false;
         }
       }
+      countClarity++;
 
-      // 6. Advanced Filters (Cut, Polish, Sym, Fl)
-      // Cut
-      String cutCode = stone.cut_code.trim().toUpperCase();
-      int cutIdx =
-          cutMapping[cutCode] ??
-          List<String>.from(
-            p['cutLabels'],
-          ).indexOf(stone.cut.trim().toUpperCase());
-      if (cutIdx != -1 &&
-          (cutIdx < p['cutRangeStart'] || cutIdx > p['cutRangeEnd'])) {
-        return false;
-      }
-
-      // Polish
-      String pCode = stone.polish.trim().toUpperCase();
-      int polishIdx =
-          polishMapping[pCode] ??
-          List<String>.from(p['polishLabels']).indexOf(pCode);
-      if (polishIdx != -1 &&
-          (polishIdx < p['polishRangeStart'] ||
-              polishIdx > p['polishRangeEnd'])) {
-        return false;
-      }
-
-      // Symmetry
-      String sCode = stone.symmetry.trim().toUpperCase();
-      int symIdx =
-          symMapping[sCode] ?? List<String>.from(p['symLabels']).indexOf(sCode);
-      if (symIdx != -1 &&
-          (symIdx < p['symRangeStart'] || symIdx > p['symRangeEnd'])) {
-        return false;
-      }
-
-      // Fluorescence
-      String fCode = stone.fl_intensity.trim().toUpperCase();
-      int flIdx =
-          flMapping[fCode] ?? List<String>.from(p['flLabels']).indexOf(fCode);
-      if (flIdx != -1 &&
-          (flIdx < p['flRangeStart'] || flIdx > p['flRangeEnd'])) {
-        return false;
-      }
-
-      // 7. Lab / Certification
-      String stoneLab = stone.lab.trim().toUpperCase();
-      final List<String> certLabels = List<String>.from(p['certLabels'] ?? []);
-      int certIdx = certLabels.indexOf(stoneLab);
-      if (certIdx != -1) {
-        if (certIdx < (p['certRangeStart'] ?? 0) ||
-            certIdx > (p['certRangeEnd'] ?? 2)) {
-          return false;
-        }
-      }
-
-      // 8. Physical Dimensions (Depth & Table)
-      if (stone.depth < p['depthRangeStart'] ||
-          stone.depth > p['depthRangeEnd']) {
-        return false;
-      }
-      if (stone.table < p['tableRangeStart'] ||
-          stone.table > p['tableRangeEnd']) {
-        return false;
-      }
+      // 6. Advanced Filters (Simplifying for debug)
+      // countAdvanced++;
 
       // 9. Fancy Color Logic
       bool isStoneFancy =
@@ -558,21 +476,19 @@ class _GmssScreenState extends State<GmssScreen>
           stone.fancy_color.isNotEmpty;
       if (isFancySearch) {
         if (!isStoneFancy) return false;
-        final String? selectedFancyColor = p['selectedFancyColor']
-            ?.toString()
-            .toUpperCase();
-        if (selectedFancyColor != null && selectedFancyColor.isNotEmpty) {
-          bool colorMatch =
-              stone.colorStr.toUpperCase().contains(selectedFancyColor) ||
-              stone.fancy_color.toUpperCase().contains(selectedFancyColor);
-          if (!colorMatch) return false;
-        }
       } else {
         if (isStoneFancy) return false;
       }
 
       return true;
     }).toList();
+
+    if (kDebugMode) {
+      print(
+        "Filter Results: Origin($countOrigin), Shape($countShape), CaratPrice($countCaratPrice), Color($countColor), Clarity($countClarity), Final(${results.length})",
+      );
+    }
+    return results;
   }
 
   void _handleLoadMore() {
@@ -608,7 +524,11 @@ class _GmssScreenState extends State<GmssScreen>
       vsync: this,
       duration: const Duration(milliseconds: 1400),
     )..repeat();
-    Future.microtask(() => _getSmartData());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) _getSmartData();
+      });
+    });
 
     // Immediate pre-fetch of Natural data for current shape
     _preFetchCurrentShapeNatural();
@@ -640,7 +560,7 @@ class _GmssScreenState extends State<GmssScreen>
       if (!_cachedNaturalMap.containsKey(shapeId)) {
         final responseMap = await GmssApiService.fetchNaturalData(
           shapeName: selectedShape,
-          perPage: 5000,
+          perPage: 1000,
         );
         if (mounted) {
           _cachedNaturalMap[shapeId] = {
@@ -819,9 +739,8 @@ class _GmssScreenState extends State<GmssScreen>
           if (!isCached) {
             _displayedStones = [];
           }
-          _totalStonesFromApi = 0;
           _hasMoreData = true;
-          _future = _getSmartData();
+          _getSmartData();
         });
       },
       onCaratChanged: (v) {
@@ -960,9 +879,8 @@ class _GmssScreenState extends State<GmssScreen>
                           selectedOrigin = 0;
                           _currentPage = 1;
                           _allFilteredStones = [];
-                          _totalStonesFromApi = 0;
                           _displayedStones = [];
-                          _future = _getSmartData();
+                          _getSmartData();
                         });
                       },
                       onFancyDiamondsTap: (colorName) {
@@ -971,9 +889,8 @@ class _GmssScreenState extends State<GmssScreen>
                           selectedFancyColor = colorName;
                           _currentPage = 1;
                           _allFilteredStones = [];
-                          _totalStonesFromApi = 0;
                           _displayedStones = [];
-                          _future = _getSmartData();
+                          _getSmartData();
                         });
                       },
                       onShapeTap: (shapeName, shapeId) {
@@ -983,9 +900,8 @@ class _GmssScreenState extends State<GmssScreen>
                           selectedShape = shapeName;
                           _currentPage = 1;
                           _allFilteredStones = [];
-                          _totalStonesFromApi = 0;
                           _displayedStones = [];
-                          _future = _getSmartData();
+                          _getSmartData();
                         });
                       },
                       shapeCategories: shapeCategories,
@@ -1002,9 +918,9 @@ class _GmssScreenState extends State<GmssScreen>
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(2),
                           child: LinearProgressIndicator(
-                            backgroundColor: themeColor.withOpacity(0.05),
+                            backgroundColor: themeColor.withValues(alpha: 0.05),
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              themeColor.withOpacity(0.6),
+                              themeColor.withValues(alpha: 0.6),
                             ),
                             minHeight: 2,
                           ),
@@ -1045,6 +961,9 @@ class _GmssScreenState extends State<GmssScreen>
                     ),
                   if (_allFilteredStones.isNotEmpty || _currentPage > 1)
                     SliverPadding(
+                      key: ValueKey(
+                        'inventory_grid_${selectedOrigin}_${selectedShapeId}_${_allFilteredStones.length}',
+                      ),
                       padding: const EdgeInsets.only(
                         left: 24,
                         right: 24,
@@ -1646,9 +1565,8 @@ class _GmssScreenState extends State<GmssScreen>
                   if (!isCached) {
                     _displayedStones = [];
                   }
-                  _totalStonesFromApi = 0;
                   _hasMoreData = true;
-                  _future = _getSmartData();
+                  _getSmartData();
                 });
               }
             },
@@ -1799,9 +1717,8 @@ class _GmssScreenState extends State<GmssScreen>
           if (!isCached) {
             _displayedStones = [];
           }
-          _totalStonesFromApi = 0;
           _hasMoreData = true;
-          _future = _getSmartData();
+          _getSmartData();
         });
         Navigator.pop(context);
       },

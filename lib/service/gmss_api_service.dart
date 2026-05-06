@@ -12,27 +12,49 @@ class _DecodeParams {
 }
 
 Map<String, dynamic> _decodeAndParseJson(_DecodeParams params) {
-  final decoded = jsonDecode(params.jsonString);
-  List<dynamic> dataList = [];
-  int totalFromApi = 0;
-  if (decoded is Map) {
-    dataList = decoded['data'] ?? [];
-    totalFromApi = int.tryParse(decoded['total']?.toString() ?? '') ?? 0;
-  } else if (decoded is List) {
-    dataList = decoded;
-    totalFromApi = dataList.length;
+  try {
+    final decoded = jsonDecode(params.jsonString);
+    List<dynamic> dataList = [];
+    int totalFromApi = 0;
+
+    if (decoded is Map) {
+      // Try multiple common keys for data list
+      dataList =
+          decoded['data'] ??
+          decoded['stones'] ??
+          decoded['response'] ??
+          decoded['list'] ??
+          [];
+
+      // Try multiple common keys for total count
+      totalFromApi =
+          int.tryParse(decoded['total']?.toString() ?? '') ??
+          int.tryParse(decoded['total_records']?.toString() ?? '') ??
+          int.tryParse(decoded['count']?.toString() ?? '') ??
+          dataList.length;
+    } else if (decoded is List) {
+      dataList = decoded;
+      totalFromApi = dataList.length;
+    }
+
+    final stones = dataList
+        .map((item) {
+          try {
+            if (item is Map<String, dynamic>) {
+              return GmssStone.fromJson(item, isLab: params.isLab);
+            }
+            return null;
+          } catch (e) {
+            return null;
+          }
+        })
+        .whereType<GmssStone>()
+        .toList();
+
+    return {'stones': stones, 'total': totalFromApi};
+  } catch (e) {
+    return {'stones': <GmssStone>[], 'total': 0};
   }
-  final stones = dataList
-      .map((item) {
-        try {
-          return GmssStone.fromJson(item, isLab: params.isLab);
-        } catch (e) {
-          return null;
-        }
-      })
-      .whereType<GmssStone>()
-      .toList();
-  return {'stones': stones, 'total': totalFromApi};
 }
 
 class GmssApiService {
@@ -47,45 +69,68 @@ class GmssApiService {
     int page = 1,
     int perPage = 5000,
   }) async {
-    try {
-      final Map<String, String> queryParams = {
-        'auth_key': authKey,
-        'page': page.toString(),
-        'per_page': perPage.toString(),
-      };
-      if (shapeName != null && shapeName.toUpperCase() != "ALL") {
-        String upper = shapeName.toUpperCase().trim();
-        // Smart mapping for API compatibility
-        if (upper == "SQ RADIANT") {
-          queryParams['shape'] = "RADIANT";
-        } else if (upper == "SQ EMERALD") {
-          queryParams['shape'] = "EMERALD";
-        } else if (upper == "ROSE") {
-          queryParams['shape'] = "ROSE";
-        } else {
-          queryParams['shape'] = upper;
-        }
-      }
-      final uri = Uri.parse(baseUrl).replace(queryParameters: queryParams);
+    final Map<String, String> queryParams = {
+      'auth_key': authKey,
+      'page': page.toString(),
+      'per_page': perPage.toString(),
+    };
 
-      // Reverted to POST as the server returned 405 for GET
-      final response = await http.post(uri);
+    if (shapeName != null && shapeName.toUpperCase() != "ALL") {
+      String upper = shapeName.toUpperCase().trim();
+      // Smart mapping for API compatibility
+      if (upper == "SQ RADIANT") {
+        queryParams['shape'] = "RADIANT";
+      } else if (upper == "SQ EMERALD") {
+        queryParams['shape'] = "EMERALD";
+      } else if (upper == "ROSE") {
+        queryParams['shape'] = "ROSE";
+      } else {
+        queryParams['shape'] = upper;
+      }
+    }
+
+    // Hybrid approach: Put parameters in both URL and Body for maximum compatibility
+    final uri = Uri.parse(baseUrl).replace(queryParameters: queryParams);
+
+    try {
+      if (kDebugMode) {
+        print("Fetching data from: $uri");
+        print("Request body: $queryParams");
+      }
+
+      final response = await http
+          .post(uri, body: queryParams)
+          .timeout(const Duration(seconds: 120));
+
+      if (kDebugMode) {
+        print("API Response Status: ${response.statusCode}");
+      }
 
       if (response.statusCode == 200) {
-        try {
-          final result = await compute(
-            _decodeAndParseJson,
-            _DecodeParams(response.body, isLab),
-          );
-          return result;
-        } catch (e) {
-          return {'stones': <GmssStone>[], 'total': 0};
+        if (kDebugMode) {
+          final bodyPreview = response.body.length > 200
+              ? "${response.body.substring(0, 200)}..."
+              : response.body;
+          print("API Response Body Preview: $bodyPreview");
         }
+        final result = await compute(
+          _decodeAndParseJson,
+          _DecodeParams(response.body, isLab),
+        );
+        return result;
       } else {
+        if (kDebugMode) {
+          print("API Error: ${response.statusCode} - ${response.body}");
+        }
+        throw Exception("API Error: ${response.statusCode}");
       }
-    } catch (e) {
+    } catch (e, stack) {
+      if (kDebugMode) {
+        print("API Exception: $e");
+        print(stack);
+      }
+      rethrow;
     }
-    return {'stones': <GmssStone>[], 'total': 0};
   }
 
   static Future<Map<String, dynamic>> fetchLabGrownData({

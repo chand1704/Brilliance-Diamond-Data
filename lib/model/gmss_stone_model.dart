@@ -75,52 +75,65 @@ class GmssStone {
       return double.tryParse(v.toString().replaceAll(',', '')) ?? 0.0;
     }
 
-    String measurements = json['measurements']?.toString() ?? "";
+    // Measurement parsing
+    String measurements = (json['measurements'] ?? json['measurement'] ?? json['meas'] ?? "").toString();
     double len = 0.0, wid = 0.0, dep = 0.0;
     if (measurements.contains('*')) {
       List<String> parts = measurements.split('*');
       if (parts.isNotEmpty) len = safeDouble(parts[0]);
       if (parts.length >= 2) wid = safeDouble(parts[1]);
       if (parts.length >= 3) dep = safeDouble(parts[2]);
+    } else if (measurements.contains('x')) {
+      List<String> parts = measurements.split('x');
+      if (parts.isNotEmpty) len = safeDouble(parts[0]);
+      if (parts.length >= 2) wid = safeDouble(parts[1]);
+      if (parts.length >= 3) dep = safeDouble(parts[2]);
+    } else {
+      len = safeDouble(json['length'] ?? json['l']);
+      wid = safeDouble(json['width'] ?? json['w']);
+      dep = safeDouble(json['depth'] ?? json['d']);
     }
-    String growthType = json['growthType']?.toString().toUpperCase() ?? "";
+
+    String growthType = (json['growthType'] ?? json['growth_type'] ?? "").toString().toUpperCase();
     bool stoneIsLab = isLab;
     if (growthType.contains("LAB") ||
         growthType.contains("CVD") ||
-        growthType.contains("HPHT")) {
+        growthType.contains("HPHT") ||
+        (json['is_lab_grown'] == true || json['isLab'] == true)) {
       stoneIsLab = true;
     } else if (growthType.contains("NATURAL") || growthType.contains("NAT")) {
       stoneIsLab = false;
     }
+
     return GmssStone(
-      id: json['stockNo']?.hashCode ?? 0,
-      stockNo: json['stockNo']?.toString() ?? '',
-      shapeStr: json['shape']?.toString().toUpperCase() ?? 'ROUND',
+      id: json['id']?.hashCode ?? json['stockNo']?.hashCode ?? json['stock_no']?.hashCode ?? 0,
+      stockNo: (json['stockNo'] ?? json['stock_no'] ?? json['stock_number'] ?? '').toString(),
+      shapeStr: (json['shape'] ?? json['shape_name'] ?? 'ROUND').toString().toUpperCase(),
       shapeIcon: '',
-      weight: safeDouble(json['weight']),
-      colorStr: json['color']?.toString() ?? "",
-      fancy_color: json['fancyColor']?.toString() ?? "",
-      clarityStr: json['clarity']?.toString() ?? "",
-      cut: json['cut']?.toString() ?? '',
-      cut_code: json['cut']?.toString() ?? '',
-      lab: json['lab']?.toString() ?? "IGI",
+      weight: safeDouble(json['weight'] ?? json['carat'] ?? json['cts']),
+      colorStr: (json['color'] ?? json['color_name'] ?? "").toString(),
+      fancy_color: (json['fancyColor'] ?? json['fancy_color'] ?? json['fancy_color_name'] ?? "").toString(),
+      clarityStr: (json['clarity'] ?? json['clarity_name'] ?? "").toString(),
+      cut: (json['cut'] ?? json['cut_grade'] ?? json['cut_name'] ?? '').toString(),
+      cut_code: (json['cut_code'] ?? json['cut'] ?? '').toString(),
+      lab: (json['lab'] ?? json['lab_name'] ?? json['certificate'] ?? "IGI").toString(),
       isLab: stoneIsLab,
-      fl_intensity: json['fluorescenceIntensity']?.toString() ?? '',
-      polish: json['polish']?.toString() ?? '',
-      image_link: json['imageLink']?.toString() ?? "",
-      video_link: json['videoLink']?.toString() ?? "",
-      certi_file: json['certiFile']?.toString() ?? "",
+      fl_intensity: (json['fluorescenceIntensity'] ?? json['fluorescence_intensity'] ?? json['fl_intensity'] ?? json['fluor'] ?? '').toString(),
+      polish: (json['polish'] ?? json['polish_name'] ?? '').toString(),
+      image_link: (json['imageLink'] ?? json['image_link'] ?? json['image_url'] ?? "").toString(),
+      video_link: (json['videoLink'] ?? json['video_link'] ?? json['video_url'] ?? "").toString(),
+      certi_file: (json['certiFile'] ?? json['certi_file'] ?? json['certificate_url'] ?? "").toString(),
       stoneName:
-          "${json['weight']} CT ${json['shape']} ${stoneIsLab ? 'LAB' : 'NATURAL'}",
-      gridle_condition: json['girdleCondition']?.toString() ?? '',
-      symmetry: json['symmetry']?.toString() ?? "",
-      culet_size: json['culetSize']?.toString() ?? '',
+          "${json['weight'] ?? json['carat'] ?? ''} CT ${json['shape'] ?? ''} ${stoneIsLab ? 'LAB' : 'NATURAL'}",
+      gridle_condition: (json['girdleCondition'] ?? json['girdle_condition'] ?? json['girdle'] ?? '').toString(),
+      symmetry: (json['symmetry'] ?? json['symmetry_name'] ?? "").toString(),
+      culet_size: (json['culetSize'] ?? json['culet_size'] ?? json['culet'] ?? '').toString(),
       length: len,
-      ratio: safeDouble(json['ratio']),
+      ratio: safeDouble(json['ratio'] ?? json['measurement_ratio']),
       width: wid,
-      depth: safeDouble(json['depth']),
-      table: safeDouble(json['table']),
-      total_price: safeDouble(json['totalPrice']),
+      depth: dep > 0 ? dep : safeDouble(json['depth'] ?? json['depth_percent']),
+      table: safeDouble(json['table'] ?? json['table_percent']),
+      total_price: safeDouble(json['totalPrice'] ?? json['total_price'] ?? json['price'] ?? json['price_total']),
     );
   }
   Map<String, dynamic> toJson() {

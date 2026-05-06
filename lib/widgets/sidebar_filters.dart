@@ -133,17 +133,29 @@ class SidebarFilters extends StatelessWidget {
           ],
           const SizedBox(height: 15),
           _sectionHeader("Carat"),
-          _buildCustomSlider(caratRange, 0, 15, onCaratChanged),
-          _buildValueDisplay(
-            caratRange.start.toStringAsFixed(2),
-            "${caratRange.end.toStringAsFixed(2)} ct",
+          StatefulRangeGroup(
+            initialValues: caratRange,
+            min: 0,
+            max: 15,
+            themeColor: themeColor,
+            onChanged: onCaratChanged,
+            bottomBuilder: (v) => _buildValueDisplay(
+              v.start.toStringAsFixed(2),
+              "${v.end.toStringAsFixed(2)} ct",
+            ),
           ),
           const SizedBox(height: 40),
           _sectionHeader("Price Range"),
-          _buildCustomSlider(priceRange, 0, 100000, onPriceChanged),
-          _buildValueDisplay(
-            "\$${priceRange.start.toInt()}",
-            "\$${priceRange.end.toInt()}",
+          StatefulRangeGroup(
+            initialValues: priceRange,
+            min: 0,
+            max: 100000,
+            themeColor: themeColor,
+            onChanged: onPriceChanged,
+            bottomBuilder: (v) => _buildValueDisplay(
+              "\$${v.start.toInt()}",
+              "\$${v.end.toInt()}",
+            ),
           ),
           const SizedBox(height: 40),
           _buildStaticFilters(),
@@ -293,41 +305,31 @@ class SidebarFilters extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 5),
-        SliderTheme(
-          data: SliderTheme.of(context).copyWith(
-            trackHeight: 3,
-            activeTrackColor: themeColor,
-            thumbColor: themeColor,
-            showValueIndicator: ShowValueIndicator.never,
-            overlayColor: themeColor.withOpacity(0.1),
-          ),
-          child: RangeSlider(
-            values: saturationRange,
-            min: 0,
-            max: (saturationLabels.length - 1).toDouble(),
-            divisions: saturationLabels.length - 1,
-            onChanged: onSaturationChanged,
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: saturationLabels.map((label) {
-              int index = saturationLabels.indexOf(label);
-              bool isActive =
-                  index >= saturationRange.start &&
-                  index <= saturationRange.end;
+        StatefulRangeGroup(
+          initialValues: saturationRange,
+          min: 0,
+          max: (saturationLabels.length - 1).toDouble(),
+          divisions: saturationLabels.length - 1,
+          themeColor: themeColor,
+          onChanged: onSaturationChanged,
+          bottomBuilder: (v) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: saturationLabels.map((label) {
+                int index = saturationLabels.indexOf(label);
+                bool isActive = index >= v.start && index <= v.end;
 
-              return Text(
-                label,
-                style: TextStyle(
-                  fontSize: 9,
-                  color: isActive ? Colors.black : Colors.grey,
-                  fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
-                ),
-              );
-            }).toList(),
+                return Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: isActive ? Colors.black : Colors.grey,
+                    fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
+                  ),
+                );
+              }).toList(),
+            ),
           ),
         ),
       ],
@@ -367,17 +369,25 @@ class SidebarFilters extends StatelessWidget {
           _buildRangeGroup("Symmetry", symLabels, symRange, onSymChanged),
           const SizedBox(height: 20),
           _sectionHeader("Depth"),
-          _buildCustomSlider(depthRange, 0, 90, onDepthChanged),
-          _buildValueDisplay(
-            "${depthRange.start.toInt()}%",
-            "${depthRange.end.toInt()}%",
+          StatefulRangeGroup(
+            initialValues: depthRange,
+            min: 0,
+            max: 90,
+            themeColor: themeColor,
+            onChanged: onDepthChanged,
+            bottomBuilder: (v) =>
+                _buildValueDisplay("${v.start.toInt()}%", "${v.end.toInt()}%"),
           ),
           const SizedBox(height: 20),
           _sectionHeader("Table"),
-          _buildCustomSlider(tableRange, 0, 90, onTableChanged),
-          _buildValueDisplay(
-            "${tableRange.start.toInt()}%",
-            "${tableRange.end.toInt()}%",
+          StatefulRangeGroup(
+            initialValues: tableRange,
+            min: 0,
+            max: 90,
+            themeColor: themeColor,
+            onChanged: onTableChanged,
+            bottomBuilder: (v) =>
+                _buildValueDisplay("${v.start.toInt()}%", "${v.end.toInt()}%"),
           ),
         ],
       ],
@@ -397,32 +407,30 @@ class SidebarFilters extends StatelessWidget {
           title,
           style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
         ),
-        SliderTheme(
-          data: SliderThemeData(
-            activeTrackColor: themeColor,
-            trackHeight: 2,
-            thumbColor: themeColor,
-          ),
-          child: RangeSlider(
-            values: values,
-            min: 0,
-            max: (labels.length - 1).toDouble(),
-            divisions: labels.length - 1,
-            onChanged: onChanged,
+        StatefulRangeGroup(
+          initialValues: values,
+          min: 0,
+          max: (labels.length - 1).toDouble(),
+          divisions: labels.length - 1,
+          themeColor: themeColor,
+          onChanged: onChanged,
+          bottomBuilder: (v) => Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: labels
+                    .map(
+                      (l) => Text(
+                        l,
+                        style: const TextStyle(fontSize: 8, color: Colors.grey),
+                      ),
+                    )
+                    .toList(),
+              ),
+              const Divider(),
+            ],
           ),
         ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: labels
-              .map(
-                (l) => Text(
-                  l,
-                  style: const TextStyle(fontSize: 8, color: Colors.grey),
-                ),
-              )
-              .toList(),
-        ),
-        const Divider(),
       ],
     );
   }
@@ -462,27 +470,6 @@ class SidebarFilters extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildCustomSlider(
-    RangeValues values,
-    double min,
-    double max,
-    Function(RangeValues) onChanged,
-  ) {
-    return SliderTheme(
-      data: SliderThemeData(
-        activeTrackColor: themeColor,
-        trackHeight: 3,
-        thumbColor: themeColor,
-      ),
-      child: RangeSlider(
-        values: values,
-        min: min,
-        max: max,
-        onChanged: onChanged,
       ),
     );
   }
@@ -566,30 +553,30 @@ class SidebarFilters extends StatelessWidget {
       ),
       initiallyExpanded: true,
       children: [
-        RangeSlider(
-          values: colorRange,
+        StatefulRangeGroup(
+          initialValues: colorRange,
           min: 0,
           max: (shadeLabels.length - 1).toDouble(),
           divisions: shadeLabels.length - 1,
-          activeColor: themeColor,
+          themeColor: themeColor,
           onChanged: onColorChanged,
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: shadeLabels
-                .map(
-                  (s) => Text(
-                    s,
-                    style: const TextStyle(
-                      fontSize: 10,
-                      color: Colors.grey,
-                      fontWeight: FontWeight.bold,
+          bottomBuilder: (v) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: shadeLabels
+                  .map(
+                    (s) => Text(
+                      s,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                )
-                .toList(),
+                  )
+                  .toList(),
+            ),
           ),
         ),
         const SizedBox(height: 20),
@@ -605,33 +592,106 @@ class SidebarFilters extends StatelessWidget {
       ),
       initiallyExpanded: true,
       children: [
-        RangeSlider(
-          values: clarityRange,
+        StatefulRangeGroup(
+          initialValues: clarityRange,
           min: 0,
           max: (clarityLabels.length - 1).toDouble(),
           divisions: clarityLabels.length - 1,
-          activeColor: themeColor,
+          themeColor: themeColor,
           onChanged: onClarityChanged,
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: clarityLabels
-                .map(
-                  (c) => Text(
-                    c,
-                    style: const TextStyle(
-                      fontSize: 8,
-                      color: Colors.grey,
-                      fontWeight: FontWeight.bold,
+          bottomBuilder: (v) => Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: clarityLabels
+                  .map(
+                    (c) => Text(
+                      c,
+                      style: const TextStyle(
+                        fontSize: 8,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                )
-                .toList(),
+                  )
+                  .toList(),
+            ),
           ),
         ),
         const SizedBox(height: 20),
+      ],
+    );
+  }
+}
+
+class StatefulRangeGroup extends StatefulWidget {
+  final RangeValues initialValues;
+  final double min;
+  final double max;
+  final int? divisions;
+  final Color themeColor;
+  final Function(RangeValues) onChanged;
+  final Widget Function(RangeValues) bottomBuilder;
+
+  const StatefulRangeGroup({
+    Key? key,
+    required this.initialValues,
+    required this.min,
+    required this.max,
+    this.divisions,
+    required this.themeColor,
+    required this.onChanged,
+    required this.bottomBuilder,
+  }) : super(key: key);
+
+  @override
+  _StatefulRangeGroupState createState() => _StatefulRangeGroupState();
+}
+
+class _StatefulRangeGroupState extends State<StatefulRangeGroup> {
+  late RangeValues _values;
+
+  @override
+  void initState() {
+    super.initState();
+    _values = widget.initialValues;
+  }
+
+  @override
+  void didUpdateWidget(StatefulRangeGroup oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.initialValues != widget.initialValues) {
+      _values = widget.initialValues;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SliderTheme(
+          data: SliderThemeData(
+            activeTrackColor: widget.themeColor,
+            trackHeight: 3,
+            thumbColor: widget.themeColor,
+            overlayColor: widget.themeColor.withOpacity(0.1),
+            showValueIndicator: ShowValueIndicator.never,
+          ),
+          child: RangeSlider(
+            values: _values,
+            min: widget.min,
+            max: widget.max,
+            divisions: widget.divisions,
+            onChanged: (v) {
+              setState(() {
+                _values = v;
+              });
+            },
+            onChangeEnd: widget.onChanged,
+          ),
+        ),
+        widget.bottomBuilder(_values),
       ],
     );
   }

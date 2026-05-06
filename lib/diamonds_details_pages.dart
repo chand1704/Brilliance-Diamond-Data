@@ -196,7 +196,7 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
       context: context,
       barrierDismissible: true,
       barrierLabel: "360View",
-      barrierColor: Colors.black.withOpacity(0.7),
+      barrierColor: Colors.black.withValues(alpha: 0.7),
       transitionDuration: const Duration(milliseconds: 400),
       pageBuilder: (context, anim1, anim2) {
         return Center(
@@ -210,7 +210,7 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
                 borderRadius: BorderRadius.circular(24),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.4),
+                    color: Colors.black.withValues(alpha: 0.4),
                     blurRadius: 40,
                     spreadRadius: -10,
                   ),
@@ -271,7 +271,9 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w900,
-                              color: const Color(0xFF005AAB).withOpacity(0.8),
+                              color: const Color(
+                                0xFF005AAB,
+                              ).withValues(alpha: 0.8),
                               letterSpacing: 2,
                             ),
                           ),
@@ -831,7 +833,7 @@ class _DiamondDetailScreenState extends State<DiamondDetailScreen> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: themeColor.withOpacity(0.05),
+            color: themeColor.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
