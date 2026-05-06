@@ -744,19 +744,19 @@ class _GmssScreenState extends State<GmssScreen>
         });
       },
       onCaratChanged: (v) {
-        setState(() => _caratRange = v);
+        _caratRange = v;
         _refreshDisplayedStonesDebounced();
       },
       onPriceChanged: (v) {
-        setState(() => _priceRange = v);
+        _priceRange = v;
         _refreshDisplayedStonesDebounced();
       },
       onColorChanged: (v) {
-        setState(() => _colorRange = v);
+        _colorRange = v;
         _refreshDisplayedStonesDebounced();
       },
       onClarityChanged: (v) {
-        setState(() => _clarityRange = v);
+        _clarityRange = v;
         _refreshDisplayedStonesDebounced();
       },
       onImageToggle: (v) {
@@ -791,31 +791,31 @@ class _GmssScreenState extends State<GmssScreen>
       onAdvancedToggle: () =>
           setState(() => showAdvancedFilters = !showAdvancedFilters),
       onCutChanged: (v) {
-        setState(() => _cutRange = v);
+        _cutRange = v;
         _refreshDisplayedStonesDebounced();
       },
       onPolishChanged: (v) {
-        setState(() => _polishRange = v);
+        _polishRange = v;
         _refreshDisplayedStonesDebounced();
       },
       onFlChanged: (v) {
-        setState(() => _flRange = v);
+        _flRange = v;
         _refreshDisplayedStonesDebounced();
       },
       onCertChanged: (v) {
-        setState(() => _certRange = v);
+        _certRange = v;
         _refreshDisplayedStonesDebounced();
       },
       onSymChanged: (v) {
-        setState(() => _symRange = v);
+        _symRange = v;
         _refreshDisplayedStonesDebounced();
       },
       onDepthChanged: (v) {
-        setState(() => _depthRange = v);
+        _depthRange = v;
         _refreshDisplayedStonesDebounced();
       },
       onTableChanged: (v) {
-        setState(() => _tableRange = v);
+        _tableRange = v;
         _refreshDisplayedStonesDebounced();
       },
       onFancyColorTap: (id, name) {
@@ -828,7 +828,7 @@ class _GmssScreenState extends State<GmssScreen>
       onFancyExpandToggle: () =>
           setState(() => isFancyExpanded = !isFancyExpanded),
       onSaturationChanged: (v) {
-        setState(() => _saturationRange = v);
+        _saturationRange = v;
         _refreshDisplayedStonesDebounced();
       },
     );

@@ -687,8 +687,8 @@ class _StatefulRangeGroupState extends State<StatefulRangeGroup> {
               setState(() {
                 _values = v;
               });
+              widget.onChanged(v);
             },
-            onChangeEnd: widget.onChanged,
           ),
         ),
         widget.bottomBuilder(_values),
